@@ -252,13 +252,13 @@ const Header = () => {
                   setMobileMenuOpen(false);
                   setEligibilityDialogOpen(true);
                 }}
-                className="w-full font-body font-semibold text-sm text-white border-2 border-white bg-white/5 px-5 py-3 rounded-full transition-all duration-300 hover:bg-white/10 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0"
+                className="w-full font-body font-light text-sm text-white border-2 border-white bg-white/5 px-5 py-3 rounded-full transition-all duration-300 hover:bg-white/10 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0"
                 style={{ boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)' }}
               >
                 Eligibility Check
               </button>
               <button 
-                className="w-full font-body font-semibold text-sm text-white border-2 border-white bg-white/5 px-5 py-3 rounded-full transition-all duration-300 hover:bg-white/10 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0"
+                className="w-full font-body font-light text-sm text-white border-2 border-white bg-white/5 px-5 py-3 rounded-full transition-all duration-300 hover:bg-white/10 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0"
                 style={{ boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)' }}
               >
                 Patient Sign-In
@@ -274,7 +274,7 @@ const Header = () => {
       <div className="flex gap-4">
         <button 
           onClick={() => setEligibilityDialogOpen(true)}
-          className="relative font-body font-semibold text-sm text-white border-2 border-white px-8 py-2 rounded-full overflow-hidden group backdrop-blur-md"
+          className="relative font-body font-light text-sm text-white border-2 border-white px-8 py-2 rounded-full overflow-hidden group backdrop-blur-md"
           style={{ backgroundColor: 'rgba(42, 61, 58, 0.7)' }}
         >
           <span className="relative z-10">Eligibility Check</span>
@@ -282,7 +282,7 @@ const Header = () => {
           <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-1000 ease-in-out"></span>
         </button>
         <button 
-          className="relative font-body font-semibold text-sm text-white border-2 border-white px-8 py-2 rounded-full overflow-hidden group backdrop-blur-md"
+          className="relative font-body font-light text-sm text-white border-2 border-white px-8 py-2 rounded-full overflow-hidden group backdrop-blur-md"
           style={{ backgroundColor: 'rgba(42, 61, 58, 0.7)' }}
         >
           <span className="relative z-10">Patient Sign-In</span>
