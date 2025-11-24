@@ -151,13 +151,38 @@ const Header = () => {
             <div className="flex items-center gap-3 ml-4 pl-4 border-l border-white/20">
               <button 
                 onClick={() => setEligibilityDialogOpen(true)}
-                className="font-body font-normal text-sm text-white px-5 py-2 rounded-full transition-all duration-200 hover:opacity-90"
-                style={{ backgroundColor: 'hsl(var(--pharma-green))' }}
+                className="font-body font-normal text-sm px-5 py-2 rounded-full transition-all duration-300 border-2"
+                style={{ 
+                  backgroundColor: 'rgba(77, 166, 169, 0.15)',
+                  borderColor: 'hsl(var(--teal-primary))',
+                  color: 'hsl(var(--teal-primary))'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'rgba(77, 166, 169, 0.25)';
+                  e.currentTarget.style.boxShadow = '0 0 20px rgba(77, 166, 169, 0.6), 0 0 40px rgba(77, 166, 169, 0.3)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'rgba(77, 166, 169, 0.15)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
               >
                 Check Eligibility
               </button>
               <button 
-                className="font-body font-normal text-sm border border-white/40 text-white px-5 py-2 rounded-full transition-all duration-200 hover:bg-white/10"
+                className="font-body font-normal text-sm px-5 py-2 rounded-full transition-all duration-300 border-2"
+                style={{ 
+                  backgroundColor: 'rgba(77, 166, 169, 0.15)',
+                  borderColor: 'hsl(var(--teal-primary))',
+                  color: 'hsl(var(--teal-primary))'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'rgba(77, 166, 169, 0.25)';
+                  e.currentTarget.style.boxShadow = '0 0 20px rgba(77, 166, 169, 0.6), 0 0 40px rgba(77, 166, 169, 0.3)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'rgba(77, 166, 169, 0.15)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
               >
                 Login
               </button>
@@ -268,13 +293,22 @@ const Header = () => {
                   setMobileMenuOpen(false);
                   setEligibilityDialogOpen(true);
                 }}
-                className="w-full font-body font-normal text-sm text-white px-5 py-3 rounded-full transition-all duration-200"
-                style={{ backgroundColor: 'hsl(var(--pharma-green))' }}
+                className="w-full font-body font-normal text-sm px-5 py-3 rounded-full transition-all duration-300 border-2 hover:shadow-[0_0_20px_rgba(77,166,169,0.6)]"
+                style={{ 
+                  backgroundColor: 'rgba(77, 166, 169, 0.15)',
+                  borderColor: 'hsl(var(--teal-primary))',
+                  color: 'hsl(var(--teal-primary))'
+                }}
               >
                 Check Eligibility
               </button>
               <button 
-                className="w-full font-body font-normal text-sm text-white border-2 border-white px-5 py-3 rounded-full transition-all duration-200 hover:bg-white/10"
+                className="w-full font-body font-normal text-sm px-5 py-3 rounded-full transition-all duration-300 border-2 hover:shadow-[0_0_20px_rgba(77,166,169,0.6)]"
+                style={{ 
+                  backgroundColor: 'rgba(77, 166, 169, 0.15)',
+                  borderColor: 'hsl(var(--teal-primary))',
+                  color: 'hsl(var(--teal-primary))'
+                }}
               >
                 Login
               </button>
