@@ -106,7 +106,7 @@ const InteractiveMap = ({ selectedCountry, onCountrySelect }: InteractiveMapProp
   useEffect(() => {
     if (!mapContainer.current) return;
     
-    // Custom style with reliable OpenStreetMap tiles
+    // Custom branded style with design system colors
     const style = {
       version: 8,
       sources: {
@@ -120,11 +120,33 @@ const InteractiveMap = ({ selectedCountry, onCountrySelect }: InteractiveMapProp
       },
       layers: [
         {
+          id: 'background',
+          type: 'background',
+          paint: {
+            'background-color': 'hsl(171, 12%, 94%)' // Muted background
+          }
+        },
+        {
           id: 'osm',
           type: 'raster',
           source: 'osm',
           minzoom: 0,
-          maxzoom: 22
+          maxzoom: 22,
+          paint: {
+            'raster-opacity': 0.65, // Subtle map tiles
+            'raster-saturation': -0.4, // Desaturated
+            'raster-contrast': -0.1,
+            'raster-brightness-min': 0.3,
+            'raster-brightness-max': 0.9
+          }
+        },
+        {
+          id: 'brand-overlay',
+          type: 'background',
+          paint: {
+            'background-color': 'hsl(178, 48%, 33%)', // Secondary green overlay
+            'background-opacity': 0.08
+          }
         }
       ]
     };
@@ -206,11 +228,11 @@ const InteractiveMap = ({ selectedCountry, onCountrySelect }: InteractiveMapProp
         el.style.boxShadow = '0 4px 16px rgba(0,0,0,0.15)';
         el.style.border = '3px solid white';
         
-        // Premium color mapping
+        // Premium color mapping with brand colors
         const colorMap: Record<LocationType, string> = {
-          'operations-sales': '#2C5F4F',      // Dark Green
-          'export-only': '#13303D',           // Navy Blue
-          'operations-only': '#6B7280',       // Charcoal Grey
+          'operations-sales': 'hsl(164, 48%, 53%)',    // Primary - Accent Green
+          'export-only': 'hsl(178, 48%, 33%)',         // Secondary Green
+          'operations-only': 'hsl(171, 12%, 66%)',     // Light Gray
         };
         
         el.style.backgroundColor = colorMap[location.type];
@@ -296,7 +318,7 @@ const InteractiveMap = ({ selectedCountry, onCountrySelect }: InteractiveMapProp
             onClick={() => setActiveLayer('operations-sales')}
             className="justify-start text-xs font-pharma"
           >
-            <div className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: '#2C5F4F' }} />
+            <div className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: 'hsl(164, 48%, 53%)' }} />
             Operations & Sales
           </Button>
           <Button
@@ -305,7 +327,7 @@ const InteractiveMap = ({ selectedCountry, onCountrySelect }: InteractiveMapProp
             onClick={() => setActiveLayer('export-only')}
             className="justify-start text-xs font-pharma"
           >
-            <div className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: '#13303D' }} />
+            <div className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: 'hsl(178, 48%, 33%)' }} />
             Export Only
           </Button>
           <Button
@@ -314,7 +336,7 @@ const InteractiveMap = ({ selectedCountry, onCountrySelect }: InteractiveMapProp
             onClick={() => setActiveLayer('operations-only')}
             className="justify-start text-xs font-pharma"
           >
-            <div className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: '#6B7280' }} />
+            <div className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: 'hsl(171, 12%, 66%)' }} />
             Operations Only
           </Button>
         </div>
