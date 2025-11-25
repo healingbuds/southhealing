@@ -126,23 +126,23 @@ const Research = () => {
           </div>
         </section>
 
-        {/* Research Areas with Eligible Conditions */}
-        <section className="py-20 md:py-32" style={{ backgroundColor: 'hsl(var(--section-color))' }}>
+        {/* Eligible Conditions by Category */}
+        <section className="py-20 md:py-32 bg-background">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8">
             <ScrollAnimation>
-              <h2 className="text-4xl md:text-5xl font-semibold text-white text-center mb-6 tracking-tight">
+              <h2 className="text-3xl md:text-4xl lg:text-5xl font-semibold text-foreground text-center mb-6 tracking-tight">
                 Eligible Conditions We Treat
               </h2>
-              <p className="text-lg text-white/70 text-center max-w-3xl mx-auto mb-16 md:mb-20">
+              <p className="text-lg text-muted-foreground/80 text-center max-w-3xl mx-auto mb-16">
                 Medical cannabis research across key therapeutic areas
               </p>
             </ScrollAnimation>
             
-            <div className="space-y-16">
+            <div className="space-y-16 max-w-7xl mx-auto">
               {Object.entries(conditionsByCategory).map(([category, conditions]) => (
                 <div key={category}>
                   <ScrollAnimation>
-                    <h3 className="text-2xl md:text-3xl font-semibold text-white mb-8 tracking-tight">
+                    <h3 className="text-2xl md:text-3xl font-semibold text-foreground mb-8 tracking-tight">
                       {category}
                     </h3>
                   </ScrollAnimation>
@@ -152,7 +152,7 @@ const Research = () => {
                       <ScrollAnimation key={condition.id}>
                         <Link
                           to={`/conditions/${condition.id}`}
-                          className="group block bg-card rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-2 border border-white/10"
+                          className="group block bg-card rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-2 border border-border/30"
                         >
                           <div className="h-48 overflow-hidden bg-gradient-to-br from-muted/30 to-muted/10">
                             <img
@@ -161,10 +161,10 @@ const Research = () => {
                               className="w-full h-full object-contain p-6 group-hover:scale-105 transition-transform duration-500"
                             />
                           </div>
-                          <div className="p-5 bg-card">
-                            <h4 className="text-xl font-semibold text-foreground mb-2 group-hover:text-primary transition-colors">
+                          <div className="p-5">
+                            <h3 className="text-xl font-semibold text-foreground mb-2 group-hover:text-primary transition-colors">
                               {condition.name}
-                            </h4>
+                            </h3>
                             <p className="text-sm text-muted-foreground">{category}</p>
                           </div>
                         </Link>
@@ -176,12 +176,12 @@ const Research = () => {
             </div>
 
             <ScrollAnimation>
-              <div className="mt-16 text-center">
-                <p className="text-white/70 mb-6 text-lg">
+              <div className="mt-20 text-center">
+                <p className="text-lg text-muted-foreground/80 mb-6">
                   Don't see your condition listed? We may still be able to help.
                 </p>
                 <Link to="/contact">
-                  <button className="btn-linear text-white border border-white/30 hover:bg-white/10 px-8 py-3 text-lg">
+                  <button className="btn-primary px-8 py-3 text-lg">
                     Contact Us →
                   </button>
                 </Link>
