@@ -80,11 +80,13 @@ const OnlinePharmacy = () => {
           <section className="py-16 md:py-20" style={{ backgroundColor: 'hsl(var(--section-color))' }}>
             <div className="container mx-auto px-3 sm:px-4 lg:px-6">
               <div className="max-w-4xl mx-auto">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-10 md:mb-12">
-                  <h2 className="text-3xl md:text-4xl font-bold text-white">
-                    Why choose our pharmacy?
-                  </h2>
-                </div>
+                <ScrollAnimation>
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-10 md:mb-12">
+                    <h2 className="text-3xl md:text-4xl font-bold text-white">
+                      Why choose our pharmacy?
+                    </h2>
+                  </div>
+                </ScrollAnimation>
 
                 <div className="space-y-3">
                   {/* Convenience */}

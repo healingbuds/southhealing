@@ -129,14 +129,16 @@ const ManufactureDistribution = () => {
           {/* Why Partner Section */}
           <section className="py-20 md:py-32" style={{ backgroundColor: 'hsl(var(--section-color))' }}>
             <div className="container mx-auto px-3 sm:px-4 lg:px-6">
-              <div className="max-w-4xl mx-auto text-center">
-                <h2 className="text-4xl font-semibold text-white mb-8">
-                  Why partner with us?
-                </h2>
-                <button className="btn-linear text-white border border-white/30 hover:bg-white/10 px-8 py-3">
-                  Get in touch →
-                </button>
-              </div>
+              <ScrollAnimation>
+                <div className="max-w-4xl mx-auto text-center">
+                  <h2 className="text-4xl font-semibold text-white mb-8">
+                    Why partner with us?
+                  </h2>
+                  <button className="btn-linear text-white border border-white/30 hover:bg-white/10 px-8 py-3">
+                    Get in touch →
+                  </button>
+                </div>
+              </ScrollAnimation>
             </div>
           </section>
 

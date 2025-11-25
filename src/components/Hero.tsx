@@ -1,3 +1,4 @@
+import React from "react";
 import hbLogoSquare from "@/assets/hb-logo-square.png";
 import { ChevronDown } from "lucide-react";
 import { motion, useScroll, useTransform } from "framer-motion";
@@ -59,36 +60,50 @@ const Hero = () => {
         className="container mx-auto px-3 sm:px-6 lg:px-8 relative z-10 py-16 sm:py-24 md:py-32"
       >
         <div className="max-w-5xl text-left relative">
-          <h1 className="font-pharma text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-semibold text-white mb-6 sm:mb-8 leading-[1.1] tracking-tight drop-shadow-lg">
+          <motion.h1 
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.2, ease: [0.25, 0.4, 0.25, 1] }}
+            className="font-pharma text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-semibold text-white mb-6 sm:mb-8 leading-[1.1] tracking-tight drop-shadow-lg"
+          >
             Welcome to{" "}
             <span className="block mt-3">Healing Buds</span>
-          </h1>
+          </motion.h1>
           
           {/* Transparent logo overlay - subtle without pulsing */}
-          <img 
+          <motion.img 
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 0.15, scale: 1 }}
+            transition={{ duration: 1, delay: 0.5, ease: [0.25, 0.4, 0.25, 1] }}
             src={hbLogoSquare} 
             alt="" 
-            className="hidden md:block absolute -right-8 md:right-4 lg:right-12 top-1/2 -translate-y-1/2 w-[380px] md:w-[480px] lg:w-[560px] h-auto opacity-15 pointer-events-none"
+            className="hidden md:block absolute -right-8 md:right-4 lg:right-12 top-1/2 -translate-y-1/2 w-[380px] md:w-[480px] lg:w-[560px] h-auto pointer-events-none"
           />
           
-          <p className="font-body text-lg sm:text-xl md:text-2xl text-white/90 mb-8 max-w-2xl font-light leading-relaxed drop-shadow-md">
+          <motion.p 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.5, ease: [0.25, 0.4, 0.25, 1] }}
+            className="font-body text-lg sm:text-xl md:text-2xl text-white/90 mb-8 max-w-2xl font-light leading-relaxed drop-shadow-md"
+          >
             Pioneering tomorrow's medical cannabis solutions
-          </p>
+          </motion.p>
         </div>
       </motion.div>
 
       {/* Scroll Indicator */}
-      <button
+      <motion.button
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8, delay: 1, ease: [0.25, 0.4, 0.25, 1] }}
         onClick={scrollToContent}
         className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 text-white/80 hover:text-white transition-all duration-300 animate-bounce cursor-pointer"
         aria-label="Scroll to content"
       >
         <ChevronDown className="w-8 h-8" />
-      </button>
+      </motion.button>
     </section>
   );
 };
 
 export default Hero;
-
-import React from "react";

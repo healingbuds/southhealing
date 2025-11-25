@@ -51,15 +51,17 @@ const CultivatingProcessing = () => {
 
           {/* Hero Image with Parallax - Linear style */}
           <section className="container mx-auto px-3 sm:px-4 lg:px-6 pb-16 md:pb-20">
-            <div ref={heroRef} className="relative h-[400px] md:h-[500px] lg:h-[600px] overflow-hidden rounded-2xl border border-border/30">
-              <motion.img 
-                src={cultivationImage}
-                alt="Cannabis cultivation facility" 
-                className="absolute inset-0 w-full h-full object-cover"
-                style={{ y, opacity }}
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-background/10 to-transparent" />
-            </div>
+            <ScrollAnimation variant="scale" duration={0.8}>
+              <div ref={heroRef} className="relative h-[400px] md:h-[500px] lg:h-[600px] overflow-hidden rounded-2xl border border-border/30">
+                <motion.img 
+                  src={cultivationImage}
+                  alt="Cannabis cultivation facility" 
+                  className="absolute inset-0 w-full h-full object-cover"
+                  style={{ y, opacity }}
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-background/10 to-transparent" />
+              </div>
+            </ScrollAnimation>
           </section>
 
           {/* Intro Section - Linear style */}
@@ -89,17 +91,19 @@ const CultivatingProcessing = () => {
           <section className="py-20 md:py-32" style={{ backgroundColor: 'hsl(var(--section-color))' }}>
             <div className="container mx-auto px-3 sm:px-4 lg:px-6">
               <div className="max-w-6xl mx-auto">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-16 md:mb-20">
-                  <h2 className="text-4xl md:text-5xl lg:text-6xl font-semibold text-white tracking-tight">
-                    Why choose us as your partner?
-                  </h2>
-                  <a 
-                    href="/contact"
-                    className="inline-flex items-center gap-2 text-white text-sm md:text-base border border-white/30 hover:bg-white/10 hover:border-white/50 px-6 md:px-7 py-2.5 md:py-3 rounded-lg transition-all duration-200 whitespace-nowrap font-medium backdrop-blur-sm"
-                  >
-                    Partner with us
-                  </a>
-                </div>
+                <ScrollAnimation>
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-16 md:mb-20">
+                    <h2 className="text-4xl md:text-5xl lg:text-6xl font-semibold text-white tracking-tight">
+                      Why choose us as your partner?
+                    </h2>
+                    <a 
+                      href="/contact"
+                      className="inline-flex items-center gap-2 text-white text-sm md:text-base border border-white/30 hover:bg-white/10 hover:border-white/50 px-6 md:px-7 py-2.5 md:py-3 rounded-lg transition-all duration-200 whitespace-nowrap font-medium backdrop-blur-sm"
+                    >
+                      Partner with us
+                    </a>
+                  </div>
+                </ScrollAnimation>
 
                 <div className="space-y-2">
                   {/* Expert cultivators */}
@@ -240,28 +244,30 @@ const CultivatingProcessing = () => {
               </ScrollAnimation>
 
               {/* Tabs - Linear style */}
-              <div className="flex justify-center gap-1 mb-12 md:mb-16">
-                <button
-                  onClick={() => setActiveTab("portugal")}
-                  className={`px-6 md:px-8 py-2.5 font-medium transition-all duration-200 rounded-lg ${
-                    activeTab === "portugal"
-                      ? "text-foreground bg-foreground/5"
-                      : "text-muted-foreground hover:text-foreground hover:bg-foreground/5"
-                  }`}
-                >
-                  South Africa
-                </button>
-                <button
-                  onClick={() => setActiveTab("canada")}
-                  className={`px-6 md:px-8 py-2.5 font-medium transition-all duration-200 rounded-lg ${
-                    activeTab === "canada"
-                      ? "text-foreground bg-foreground/5"
-                      : "text-muted-foreground hover:text-foreground hover:bg-foreground/5"
-                  }`}
-                >
-                  United Kingdom
-                </button>
-              </div>
+              <ScrollAnimation variant="fade" delay={0.1}>
+                <div className="flex justify-center gap-1 mb-12 md:mb-16">
+                  <button
+                    onClick={() => setActiveTab("portugal")}
+                    className={`px-6 md:px-8 py-2.5 font-medium transition-all duration-200 rounded-lg ${
+                      activeTab === "portugal"
+                        ? "text-foreground bg-foreground/5"
+                        : "text-muted-foreground hover:text-foreground hover:bg-foreground/5"
+                    }`}
+                  >
+                    South Africa
+                  </button>
+                  <button
+                    onClick={() => setActiveTab("canada")}
+                    className={`px-6 md:px-8 py-2.5 font-medium transition-all duration-200 rounded-lg ${
+                      activeTab === "canada"
+                        ? "text-foreground bg-foreground/5"
+                        : "text-muted-foreground hover:text-foreground hover:bg-foreground/5"
+                    }`}
+                  >
+                    United Kingdom
+                  </button>
+                </div>
+              </ScrollAnimation>
 
               {/* Content - Linear style */}
               {activeTab === "portugal" && (

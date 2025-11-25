@@ -29,14 +29,16 @@ const Contact = () => {
 
         {/* Hero Image */}
         <section className="container mx-auto px-3 sm:px-4 lg:px-6 pb-16 md:pb-20">
-          <div className="relative h-[300px] md:h-[400px] overflow-hidden rounded-xl border border-border/30">
-            <img 
-              src={greenhouseImage} 
-              alt="Healing Buds facilities" 
-              className="absolute inset-0 w-full h-full object-cover"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-background/10 to-transparent" />
-          </div>
+          <ScrollAnimation variant="scale" duration={0.8}>
+            <div className="relative h-[300px] md:h-[400px] overflow-hidden rounded-xl border border-border/30">
+              <img 
+                src={greenhouseImage} 
+                alt="Healing Buds facilities" 
+                className="absolute inset-0 w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-background/10 to-transparent" />
+            </div>
+          </ScrollAnimation>
         </section>
 
         {/* Contact Information - Linear style */}
