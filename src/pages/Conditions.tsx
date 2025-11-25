@@ -6,82 +6,90 @@ import BackToTop from "@/components/BackToTop";
 import { Search } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import productsPainManagement from "@/assets/products-pain-management.jpg";
-import productsMentalHealth from "@/assets/products-mental-health.jpg";
-import productsNeurological from "@/assets/products-neurological.jpg";
-import productsSleep from "@/assets/products-sleep.jpg";
+import conditionAnxiety from "@/assets/condition-anxiety.jpg";
+import conditionChronicPain from "@/assets/condition-chronic-pain.jpg";
+import conditionArthritis from "@/assets/condition-arthritis.jpg";
+import conditionBackPain from "@/assets/condition-back-pain.jpg";
+import conditionCRPS from "@/assets/condition-crps.jpg";
+import conditionEpilepsy from "@/assets/condition-epilepsy.jpg";
+import conditionInsomnia from "@/assets/condition-insomnia.jpg";
+import conditionMigraines from "@/assets/condition-migraines.jpg";
+import conditionMS from "@/assets/condition-ms.jpg";
+import conditionNeuropathicPain from "@/assets/condition-neuropathic-pain.jpg";
+import conditionParkinsons from "@/assets/condition-parkinsons.jpg";
+import conditionPTSD from "@/assets/condition-ptsd.jpg";
 
 const conditions = [
   { 
     id: "anxiety", 
     name: "Anxiety", 
-    image: productsMentalHealth,
+    image: conditionAnxiety,
     category: "Mental Health"
   },
   { 
     id: "chronic-pain", 
     name: "Chronic Pain", 
-    image: productsPainManagement,
+    image: conditionChronicPain,
     category: "Pain Management"
   },
   { 
     id: "arthritis", 
     name: "Arthritis", 
-    image: productsPainManagement,
+    image: conditionArthritis,
     category: "Pain Management"
   },
   { 
     id: "back-pain", 
     name: "Back Pain", 
-    image: productsPainManagement,
+    image: conditionBackPain,
     category: "Pain Management"
   },
   { 
     id: "complex-regional-pain-syndrome", 
     name: "Complex Regional Pain Syndrome", 
-    image: productsPainManagement,
+    image: conditionCRPS,
     category: "Pain Management"
   },
   { 
     id: "epilepsy", 
     name: "Epilepsy", 
-    image: productsNeurological,
+    image: conditionEpilepsy,
     category: "Neurological"
   },
   { 
     id: "insomnia", 
     name: "Insomnia", 
-    image: productsSleep,
+    image: conditionInsomnia,
     category: "Sleep Disorders"
   },
   { 
     id: "migraines", 
     name: "Migraines", 
-    image: productsPainManagement,
+    image: conditionMigraines,
     category: "Pain Management"
   },
   { 
     id: "multiple-sclerosis", 
     name: "Multiple Sclerosis", 
-    image: productsNeurological,
+    image: conditionMS,
     category: "Neurological"
   },
   { 
     id: "neuropathic-pain", 
     name: "Neuropathic Pain", 
-    image: productsPainManagement,
+    image: conditionNeuropathicPain,
     category: "Pain Management"
   },
   { 
     id: "parkinsons-disease", 
     name: "Parkinson's Disease", 
-    image: productsNeurological,
+    image: conditionParkinsons,
     category: "Neurological"
   },
   { 
     id: "ptsd", 
     name: "PTSD", 
-    image: productsMentalHealth,
+    image: conditionPTSD,
     category: "Mental Health"
   },
 ];
