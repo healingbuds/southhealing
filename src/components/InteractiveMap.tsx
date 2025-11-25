@@ -230,7 +230,7 @@ const InteractiveMap = ({ selectedCountry, onCountrySelect }: InteractiveMapProp
         
         // Premium color mapping with brand colors
         const colorMap: Record<LocationType, string> = {
-          'operations-sales': 'hsl(164, 48%, 53%)',    // Primary - Accent Green
+          'operations-sales': 'hsl(164, 80%, 38%)',    // Vibrant darker green for contrast
           'export-only': 'hsl(178, 48%, 33%)',         // Secondary Green
           'operations-only': 'hsl(171, 12%, 66%)',     // Light Gray
         };
@@ -318,7 +318,7 @@ const InteractiveMap = ({ selectedCountry, onCountrySelect }: InteractiveMapProp
             onClick={() => setActiveLayer('operations-sales')}
             className="justify-start text-xs font-pharma"
           >
-            <div className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: 'hsl(164, 48%, 53%)' }} />
+            <div className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: 'hsl(164, 80%, 38%)' }} />
             Operations & Sales
           </Button>
           <Button
