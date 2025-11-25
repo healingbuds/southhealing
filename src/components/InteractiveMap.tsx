@@ -106,9 +106,32 @@ const InteractiveMap = ({ selectedCountry, onCountrySelect }: InteractiveMapProp
   useEffect(() => {
     if (!mapContainer.current) return;
     
+    // Custom style with reliable OpenStreetMap tiles
+    const style = {
+      version: 8,
+      sources: {
+        osm: {
+          type: 'raster',
+          tiles: ['https://a.tile.openstreetmap.org/{z}/{x}/{y}.png'],
+          tileSize: 256,
+          attribution: '&copy; OpenStreetMap Contributors',
+          maxzoom: 19
+        }
+      },
+      layers: [
+        {
+          id: 'osm',
+          type: 'raster',
+          source: 'osm',
+          minzoom: 0,
+          maxzoom: 22
+        }
+      ]
+    };
+    
     map.current = new maplibregl.Map({
       container: mapContainer.current,
-      style: 'https://demotiles.maplibre.org/style.json',
+      style: style as any,
       center: [20, 20],
       zoom: 2,
       attributionControl: false,
