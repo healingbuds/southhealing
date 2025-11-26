@@ -202,13 +202,17 @@ const InteractiveMap = ({ selectedCountry, onCountrySelect }: InteractiveMapProp
       attributionControl: false,
     });
 
-    map.current.addControl(
-      new maplibregl.NavigationControl({
-        visualizePitch: false,
-        showCompass: false,
-      }),
-      'top-right'
-    );
+    const navControl = new maplibregl.NavigationControl({
+      visualizePitch: false,
+      showCompass: false,
+    });
+    map.current.addControl(navControl, 'top-right');
+    
+    // Add custom z-index to navigation control
+    const navControlContainer = document.querySelector('.maplibregl-ctrl-top-right');
+    if (navControlContainer) {
+      (navControlContainer as HTMLElement).style.zIndex = '25';
+    }
 
     map.current.on('load', () => {
       setIsLoaded(true);
@@ -411,7 +415,7 @@ const InteractiveMap = ({ selectedCountry, onCountrySelect }: InteractiveMapProp
   return (
     <div className="relative w-full h-full">
       {/* Compliance Disclaimer Banner */}
-      <div className="absolute top-6 right-6 z-10 bg-background/98 backdrop-blur-sm rounded-xl shadow-xl border-2 border-primary/30 p-4 max-w-xs">
+      <div className="absolute top-6 right-6 z-20 bg-background/98 backdrop-blur-sm rounded-xl shadow-xl border-2 border-primary/30 p-4 max-w-xs hidden sm:block">
         <div className="flex items-start gap-3">
           <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0 mt-0.5">
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="text-primary">
@@ -428,7 +432,7 @@ const InteractiveMap = ({ selectedCountry, onCountrySelect }: InteractiveMapProp
       </div>
 
       {/* Layer Toggle Controls */}
-      <div className="absolute top-6 left-6 z-10 bg-background/98 backdrop-blur-sm rounded-2xl shadow-2xl border border-border/60 p-3">
+      <div className="absolute top-4 left-4 sm:top-6 sm:left-6 z-30 bg-background backdrop-blur-md rounded-2xl shadow-2xl border border-border/60 p-3">
         <div className="flex flex-col gap-2">
           <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1 px-2">
             Filter Locations
