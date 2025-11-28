@@ -90,37 +90,37 @@ const MedicalClinics = () => {
 
               <div className="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto">
                 <ScrollAnimation delay={0.1}>
-                  <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-8 hover-lift group">
+                  <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-8 hover-lift group h-full flex flex-col">
                     <div className="w-16 h-16 bg-gradient-to-br from-white/30 to-white/10 rounded-2xl flex items-center justify-center mb-6 shadow-lg group-hover:shadow-xl transition-all duration-200 group-hover:scale-110">
                       <Users className="w-8 h-8 text-white" strokeWidth={2} />
                     </div>
                     <h3 className="text-2xl font-semibold text-white mb-4">Expert consultations</h3>
-                    <p className="text-white/90 leading-relaxed">
-                      Clinics led by medical doctors trained as cannabis specialists, providing evidence-based guidance for your treatment.
+                    <p className="text-white/90 leading-relaxed flex-grow">
+                      Our physicians are medical doctors trained as cannabis specialists, providing evidence-based guidance for your treatment.
                     </p>
                   </div>
                 </ScrollAnimation>
 
                 <ScrollAnimation delay={0.2}>
-                  <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-8 hover-lift group">
+                  <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-8 hover-lift group h-full flex flex-col">
                     <div className="w-16 h-16 bg-gradient-to-br from-white/30 to-white/10 rounded-2xl flex items-center justify-center mb-6 shadow-lg group-hover:shadow-xl transition-all duration-200 group-hover:scale-110">
                       <FileText className="w-8 h-8 text-white" strokeWidth={2} />
                     </div>
                     <h3 className="text-2xl font-semibold text-white mb-4">Personalized treatment plans</h3>
-                    <p className="text-white/90 leading-relaxed">
-                      Physician consultations begin with a comprehensive review of your medical history to create tailored cannabis treatment plans.
+                    <p className="text-white/90 leading-relaxed flex-grow">
+                      Our physicians begin with a comprehensive review of your medical history to create tailored cannabis treatment plans.
                     </p>
                   </div>
                 </ScrollAnimation>
 
                 <ScrollAnimation delay={0.3}>
-                  <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-8 hover-lift group">
+                  <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-8 hover-lift group h-full flex flex-col">
                     <div className="w-16 h-16 bg-gradient-to-br from-white/30 to-white/10 rounded-2xl flex items-center justify-center mb-6 shadow-lg group-hover:shadow-xl transition-all duration-200 group-hover:scale-110">
                       <Heart className="w-8 h-8 text-white" strokeWidth={2} />
                     </div>
                     <h3 className="text-2xl font-semibold text-white mb-4">Ongoing patient support</h3>
-                    <p className="text-white/90 leading-relaxed">
-                      Continuous follow-up care throughout your cannabis treatment journey with expert clinical support.
+                    <p className="text-white/90 leading-relaxed flex-grow">
+                      Continuous follow-up care throughout your cannabis treatment journey with expert clinical support from our physicians.
                     </p>
                   </div>
                 </ScrollAnimation>
@@ -259,7 +259,7 @@ const MedicalClinics = () => {
                         Contact us →
                       </button>
                       <button className="btn-outline px-6 py-2.5">
-                        Find a clinic →
+                        Check eligibility →
                       </button>
                     </div>
                   </ScrollAnimation>

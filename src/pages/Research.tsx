@@ -113,7 +113,7 @@ const Research = () => {
                   Essential Research
                 </h2>
                 <p className="text-base md:text-lg text-muted-foreground/80 leading-relaxed mb-6">
-                  We partner with leading institutions Imperial College London and University of Pennsylvania, to deepen the clinical understanding of cannabis-based medicine. Scientific research isn't just what we do – it's everything we stand for.
+                  Our collaboration with world-class research institutions including Imperial College London and the Lisbon School of Agriculture gives us advanced scientific understanding of cannabis and its benefits. Scientific research isn't just what we do – it's everything we stand for.
                 </p>
                 <p className="text-base md:text-lg text-muted-foreground/80 leading-relaxed mb-16">
                   Our research division conducts rigorous clinical trials to advance the scientific understanding of cannabinoids and their medical applications, contributing to a growing body of evidence that breaks down stigma and pushes for progress.

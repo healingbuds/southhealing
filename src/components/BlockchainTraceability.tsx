@@ -159,10 +159,10 @@ const BlockchainTraceability = () => {
             BLOCKCHAIN TECHNOLOGY
           </Badge>
           <h2 className="text-4xl md:text-5xl font-semibold text-foreground mb-6">
-            Seed-to-Sale <span className="text-brand-deep-teal">Traceability</span>
+            Seed-to-Patient <span className="text-brand-deep-teal">Traceability</span>
           </h2>
           <p className="text-lg text-muted-foreground/80 leading-relaxed">
-            Every product journey is immutably recorded on the blockchain with genome sequencing verification, eliminating counterfeits and ensuring complete transparency.
+            With every stage of cultivation tracked and documented on the blockchain with full transparency from seed to patient with unwavering attention to detail. Dr Green's EU GMP Certified products meeting the highest international standards.
           </p>
         </div>
 

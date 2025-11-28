@@ -39,7 +39,7 @@ const ManufactureDistribution = () => {
                   Manufacture & Distribution
                 </h1>
                 <p className="text-xl text-muted-foreground/80 max-w-2xl">
-                  Global manufacturing excellence delivering quality medical cannabis from cultivation to patient
+                  Every stage from cultivation through extraction to final production is meticulously managed with unwavering attention to detail. Our EU GMP-certified products meet the highest international standards, earning trust across borders.
                 </p>
               </ScrollAnimation>
             </div>
@@ -51,15 +51,18 @@ const ManufactureDistribution = () => {
               <div className="grid md:grid-cols-2 gap-12 items-center max-w-6xl mx-auto">
                 <ScrollAnimation>
                   <h2 className="text-4xl font-semibold text-foreground leading-tight mb-6">
-                    We're a global ecosystem in medical cannabis with a strong presence across the entire supply chain
+                    Production & Processing Excellence
                   </h2>
+                  <p className="text-lg text-muted-foreground/80 leading-relaxed">
+                    With our production partner Dr Green's state-of-the-art global facilities spanning more than 30,000 square metres dedicated to pharmaceutical-grade cannabis production alongside fully EU GMP approved facilities, this allows us to consistently break barriers delivering excellence.
+                  </p>
                 </ScrollAnimation>
                 <ScrollAnimation delay={0.2}>
                   <p className="text-lg text-muted-foreground/80 leading-relaxed mb-4">
-                    Operating state-of-the-art Good Manufacturing Practice (GMP) facilities in South Africa, the United Kingdom, Thailand, and Portugal, we process and deliver premium medical cannabis to patients worldwide.
+                    Our state-of-the-art facilities across Canada and Portugal span more than 30,000 square metres dedicated to pharmaceutical-grade cannabis production. From seed selection through harvesting and processing, we maintain rigorous oversight at every production stage.
                   </p>
                   <p className="text-lg text-muted-foreground/80 leading-relaxed">
-                    Our extensive expertise and commitment to quality spans across four key regions, bringing people together to widen access to cannabis-based medicine globally.
+                    Each batch undergoes comprehensive testing, precise trimming, controlled drying and curing, and careful packaging to ensure consistent quality that meets stringent third-party standards.
                   </p>
                 </ScrollAnimation>
               </div>
@@ -80,9 +83,9 @@ const ManufactureDistribution = () => {
                       <div className="w-16 h-16 bg-gradient-to-br from-primary to-secondary rounded-2xl flex items-center justify-center mb-6 shadow-lg group-hover:shadow-xl transition-all duration-200 group-hover:scale-110">
                         <Factory className="w-8 h-8 text-white" strokeWidth={2} />
                       </div>
-                      <h3 className="text-xl font-semibold text-foreground mb-3">GMP Certified</h3>
+                      <h3 className="text-xl font-semibold text-foreground mb-3">EU GMP Certified</h3>
                       <p className="text-muted-foreground/80 leading-relaxed">
-                        All facilities meet pharmaceutical-grade manufacturing standards
+                        Dr Green's EU GMP certified products meet the highest international standards
                       </p>
                     </div>
                   </ScrollAnimation>
