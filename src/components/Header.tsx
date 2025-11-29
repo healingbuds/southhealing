@@ -150,7 +150,19 @@ const Header = () => {
               Research
             </Link>
             <Link 
-              to="/about-us" 
+              to="/the-wire" 
+              className={cn(
+                "font-body font-medium transition-all duration-300 ease-out rounded-md hover:scale-105",
+                scrolled ? "text-sm px-2.5 py-1.5" : "text-sm px-3 py-1.5",
+                isActive("/the-wire") || location.pathname.startsWith("/the-wire/")
+                  ? "text-white bg-white/10" 
+                  : "text-white/70 hover:text-white hover:bg-white/5"
+              )}
+            >
+              The Wire
+            </Link>
+            <Link 
+              to="/about-us"
               className={cn(
                 "font-body flex items-center gap-1 font-medium transition-all duration-300 ease-out rounded-md hover:scale-105",
                 scrolled ? "text-sm px-2.5 py-1.5" : "text-sm px-3 py-1.5",
@@ -282,7 +294,17 @@ const Header = () => {
               Research
             </Link>
             <Link 
-              to="/about-us" 
+              to="/the-wire" 
+              className={cn(
+                "font-normal text-sm transition-all duration-200 py-1.5",
+                isActive("/the-wire") || location.pathname.startsWith("/the-wire/") ? "text-white font-semibold" : "text-white/80 hover:text-white"
+              )}
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              The Wire
+            </Link>
+            <Link 
+              to="/about-us"
               className={cn(
                 "font-normal text-sm transition-all duration-200 py-1.5",
                 isActive("/about-us") ? "text-white font-semibold" : "text-white/80 hover:text-white"

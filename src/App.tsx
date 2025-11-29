@@ -7,6 +7,8 @@ import { AnimatePresence } from "framer-motion";
 import ScrollToTop from "@/components/ScrollToTop";
 import Index from "./pages/Index";
 import WhatWeDo from "./pages/WhatWeDo";
+import TheWire from "./pages/TheWire";
+import NewsArticle from "./pages/NewsArticle";
 import CultivatingProcessing from "./pages/CultivatingProcessing";
 import ManufactureDistribution from "./pages/ManufactureDistribution";
 import Conditions from "./pages/Conditions";
@@ -38,6 +40,8 @@ const AnimatedRoutes = () => {
         <Route path="/online-pharmacy" element={<OnlinePharmacy />} />
         <Route path="/research" element={<Research />} />
         <Route path="/about-us" element={<AboutUs />} />
+        <Route path="/the-wire" element={<TheWire />} />
+        <Route path="/the-wire/:articleId" element={<NewsArticle />} />
         <Route path="/contact" element={<Contact />} />
         <Route path="/privacy-policy" element={<PrivacyPolicy />} />
         <Route path="/terms-of-service" element={<TermsOfService />} />

@@ -63,6 +63,11 @@ const Footer = () => {
                       Research
                     </Link>
                   </li>
+                  <li>
+                    <Link to="/the-wire" className="font-body text-sm text-white/60 hover:text-white transition-colors inline-block">
+                      The Wire
+                    </Link>
+                  </li>
                 </ul>
               </div>
 
