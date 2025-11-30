@@ -185,7 +185,7 @@ const TermsOfService = () => {
                   {t("terms.contact.content")}
                 </p>
                 <div className="space-y-2">
-                  <p><strong>{t("terms.contact.email")}</strong> legal@drgreennft.com</p>
+                  <p><strong>{t("terms.contact.email")}</strong> legal@healingbuds.com</p>
                   <p><strong>{t("terms.contact.address")}</strong> {t("terms.contact.addressValue")}</p>
                 </div>
               </section>

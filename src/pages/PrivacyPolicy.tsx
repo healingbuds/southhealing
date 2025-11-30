@@ -155,7 +155,7 @@ const PrivacyPolicy = () => {
                   {t("privacy.contact.content")}
                 </p>
                 <div className="space-y-2">
-                  <p><strong>{t("privacy.contact.email")}</strong> privacy@drgreennft.com</p>
+                  <p><strong>{t("privacy.contact.email")}</strong> privacy@healingbuds.com</p>
                   <p><strong>{t("privacy.contact.address")}</strong> {t("privacy.contact.addressValue")}</p>
                 </div>
               </section>

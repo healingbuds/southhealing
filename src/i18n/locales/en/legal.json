@@ -4,7 +4,7 @@
     "lastUpdated": "Last updated:",
     "introduction": {
       "title": "Introduction",
-      "content": "Dr. Green NFT (\"we,\" \"our,\" or \"us\") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our platform, including our website and NFT-based cannabis fulfillment services."
+      "content": "Healing Buds Global (\"we,\" \"our,\" or \"us\") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our platform, including our website and medical cannabis services."
     },
     "informationCollect": {
       "title": "Information We Collect",
@@ -30,9 +30,9 @@
     "howWeUse": {
       "title": "How We Use Your Information",
       "items": [
-        "To provide and maintain our NFT platform and fulfillment services",
+        "To provide and maintain our platform and fulfilment services",
         "To verify eligibility and comply with cannabis regulations",
-        "To process transactions and manage NFT keys",
+        "To process transactions and manage access",
         "To communicate with you about your account and services",
         "To ensure blockchain traceability and compliance",
         "To improve our services and develop new features",
@@ -43,7 +43,7 @@
       "title": "Information Sharing",
       "intro": "We may share your information with:",
       "items": [
-        { "label": "Licensed Partners:", "desc": "Cannabis cultivation and fulfillment providers" },
+        { "label": "Licensed Partners:", "desc": "Cannabis cultivation and fulfilment providers" },
         { "label": "Regulatory Authorities:", "desc": "As required by applicable cannabis laws" },
         { "label": "Service Providers:", "desc": "Third-party vendors who assist our operations" },
         { "label": "Blockchain Networks:", "desc": "Transaction data recorded on public blockchains" },
@@ -95,7 +95,7 @@
       "content": "If you have questions about this Privacy Policy or our privacy practices, please contact us at:",
       "email": "Email:",
       "address": "Address:",
-      "addressValue": "Dr. Green NFT Headquarters"
+      "addressValue": "Healing Buds Global Headquarters"
     }
   },
   "terms": {
@@ -103,7 +103,7 @@
     "lastUpdated": "Last updated:",
     "agreement": {
       "title": "Agreement to Terms",
-      "content": "By accessing or using Dr. Green NFT's platform and services, you agree to be bound by these Terms of Service. If you do not agree to these terms, you may not access or use our services."
+      "content": "By accessing or using Healing Buds Global's platform and services, you agree to be bound by these Terms of Service. If you do not agree to these terms, you may not access or use our services."
     },
     "eligibility": {
       "title": "Eligibility",
@@ -121,7 +121,7 @@
       "ownership": {
         "title": "NFT Ownership",
         "items": [
-          "NFT Keys (Standard, Gold, Platinum) grant access to our cannabis fulfillment platform",
+          "NFT Keys (Standard, Gold, Platinum) grant access to our cannabis fulfilment platform",
           "Each NFT is an ERC-721 token on the blockchain",
           "You retain ownership and can trade NFTs on secondary markets",
           "NFT value is determined by blockchain activity and market demand"
@@ -174,7 +174,7 @@
       "intro": "Our platform uses blockchain technology for:",
       "items": [
         "Transparent seed-to-sale product tracking",
-        "Immutable record of all transactions and fulfillments",
+        "Immutable record of all transactions and fulfilments",
         "Verification of product authenticity and regulatory compliance",
         "Prevention of counterfeit products"
       ],
@@ -182,11 +182,11 @@
     },
     "intellectualProperty": {
       "title": "Intellectual Property",
-      "content": "All content, trademarks, and intellectual property on our platform are owned by Dr. Green NFT or our licensors. You may not use, reproduce, or distribute any content without our express written permission."
+      "content": "All content, trademarks, and intellectual property on our platform are owned by Healing Buds Global or our licensors. You may not use, reproduce, or distribute any content without our express written permission."
     },
     "liability": {
       "title": "Limitation of Liability",
-      "intro": "To the fullest extent permitted by law, Dr. Green NFT shall not be liable for:",
+      "intro": "To the fullest extent permitted by law, Healing Buds Global shall not be liable for:",
       "items": [
         "Indirect, incidental, or consequential damages",
         "Loss of profits, data, or business opportunities",
@@ -213,7 +213,7 @@
       "content": "For questions about these Terms of Service, please contact us at:",
       "email": "Email:",
       "address": "Address:",
-      "addressValue": "Dr. Green NFT Headquarters"
+      "addressValue": "Healing Buds Global Headquarters"
     }
   }
 }
