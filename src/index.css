@@ -278,6 +278,15 @@ All colors MUST be HSL.
     @apply shadow-xl;
     box-shadow: 0 0 30px rgba(77, 191, 161, 0.5);
   }
+  
+  /* Safe area for iOS devices */
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  
+  .pt-safe {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
 }
 
 /* Mapbox custom styles with warmer feel */

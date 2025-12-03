@@ -1,17 +1,23 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import EligibilityDialog from "./EligibilityDialog";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
 import { useToast } from "@/hooks/use-toast";
 import { LogOut } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
-const MobileBottomActions = () => {
+interface MobileBottomActionsProps {
+  menuOpen?: boolean;
+}
+
+const MobileBottomActions = ({ menuOpen = false }: MobileBottomActionsProps) => {
   const [eligibilityDialogOpen, setEligibilityDialogOpen] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { t } = useTranslation('common');
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -30,7 +36,7 @@ const MobileBottomActions = () => {
   const handleLogout = async () => {
     await supabase.auth.signOut();
     toast({
-      title: "Signed out",
+      title: t('nav.signOut'),
       description: "You have been successfully signed out.",
     });
     navigate("/");
@@ -38,40 +44,47 @@ const MobileBottomActions = () => {
 
   return (
     <>
-      {/* Fixed Bottom Action Bar - Mobile and Tablet */}
-      <motion.div 
-        initial={{ y: 100, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.5, delay: 0.3 }}
-        className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-gradient-to-t from-background via-background to-background/95 backdrop-blur-xl border-t border-border/50 shadow-2xl"
-      >
-        <div className="container mx-auto px-4 py-3">
-          <div className="flex gap-3">
-            <button 
-              onClick={() => setEligibilityDialogOpen(true)}
-              className="flex-1 font-body font-semibold px-6 py-3.5 rounded-full transition-all duration-300 active:scale-95 shadow-lg hover:shadow-xl backdrop-blur-2xl bg-gradient-to-br from-white/30 via-white/20 to-white/10 dark:from-white/20 dark:via-white/10 dark:to-white/5 border border-white/40 hover:border-white/60 text-white hover:bg-white/30"
-            >
-              Check Eligibility
-            </button>
-            {user ? (
-              <button 
-                onClick={handleLogout}
-                className="flex-1 font-body font-semibold px-6 py-3.5 rounded-full transition-all duration-300 active:scale-95 shadow-lg hover:shadow-xl backdrop-blur-2xl bg-gradient-to-br from-white/20 via-white/15 to-white/10 dark:from-white/15 dark:via-white/10 dark:to-white/5 border border-white/30 hover:border-white/50 text-white hover:bg-white/25 flex items-center justify-center gap-2"
-              >
-                <LogOut className="w-4 h-4" />
-                Sign Out
-              </button>
-            ) : (
-              <Link 
-                to="/auth"
-                className="flex-1 font-body font-semibold px-6 py-3.5 rounded-full transition-all duration-300 active:scale-95 shadow-lg hover:shadow-xl backdrop-blur-2xl bg-gradient-to-br from-white/20 via-white/15 to-white/10 dark:from-white/15 dark:via-white/10 dark:to-white/5 border border-white/30 hover:border-white/50 text-white hover:bg-white/25 text-center"
-              >
-                Patient Login
-              </Link>
-            )}
-          </div>
-        </div>
-      </motion.div>
+      {/* Fixed Bottom Action Bar - Mobile and Tablet - Hidden when menu is open */}
+      <AnimatePresence>
+        {!menuOpen && (
+          <motion.div 
+            initial={{ y: 100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 100, opacity: 0 }}
+            transition={{ duration: 0.3, ease: "easeOut" }}
+            className="lg:hidden fixed bottom-0 left-0 right-0 z-50 pb-safe"
+          >
+            <div className="mx-2 mb-2 rounded-2xl bg-[hsl(178,48%,21%)]/95 backdrop-blur-xl border border-white/20 shadow-2xl">
+              <div className="px-4 py-3">
+                <div className="flex gap-3">
+                  <button 
+                    onClick={() => setEligibilityDialogOpen(true)}
+                    className="flex-1 font-body font-semibold px-5 py-3 rounded-full transition-all duration-300 active:scale-95 shadow-lg hover:shadow-xl backdrop-blur-2xl bg-gradient-to-br from-white/30 via-white/20 to-white/10 border border-white/40 hover:border-white/60 text-white hover:bg-white/30 text-sm"
+                  >
+                    {t('nav.checkEligibility')}
+                  </button>
+                  {user ? (
+                    <button 
+                      onClick={handleLogout}
+                      className="flex-1 font-body font-semibold px-5 py-3 rounded-full transition-all duration-300 active:scale-95 shadow-lg hover:shadow-xl backdrop-blur-2xl bg-gradient-to-br from-white/20 via-white/15 to-white/10 border border-white/30 hover:border-white/50 text-white hover:bg-white/25 flex items-center justify-center gap-2 text-sm"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      {t('nav.signOut')}
+                    </button>
+                  ) : (
+                    <Link 
+                      to="/auth"
+                      className="flex-1 font-body font-semibold px-5 py-3 rounded-full transition-all duration-300 active:scale-95 shadow-lg hover:shadow-xl backdrop-blur-2xl bg-gradient-to-br from-white/20 via-white/15 to-white/10 border border-white/30 hover:border-white/50 text-white hover:bg-white/25 text-center text-sm"
+                    >
+                      {t('nav.patientLogin')}
+                    </Link>
+                  )}
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Eligibility Dialog */}
       <EligibilityDialog open={eligibilityDialogOpen} onOpenChange={setEligibilityDialogOpen} />

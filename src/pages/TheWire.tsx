@@ -1,10 +1,12 @@
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useState } from "react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import PageTransition from "@/components/PageTransition";
 import BackToTop from "@/components/BackToTop";
 import ScrollAnimation from "@/components/ScrollAnimation";
+import MobileBottomActions from "@/components/MobileBottomActions";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,13 +14,14 @@ import { newsArticles } from "@/data/newsArticles";
 
 const TheWire = () => {
   const { t } = useTranslation("theWire");
+  const [menuOpen, setMenuOpen] = useState(false);
   const featuredArticle = newsArticles.find((a) => a.featured);
   const otherArticles = newsArticles.filter((a) => !a.featured);
 
   return (
     <PageTransition>
       <div className="min-h-screen bg-background">
-        <Header />
+        <Header onMenuStateChange={setMenuOpen} />
         <main className="pt-24 pb-20">
           {/* Hero Section */}
           <section className="container mx-auto px-4 sm:px-6 lg:px-8 mb-12">
@@ -144,6 +147,7 @@ const TheWire = () => {
         </main>
         <Footer />
         <BackToTop />
+        <MobileBottomActions menuOpen={menuOpen} />
       </div>
     </PageTransition>
   );

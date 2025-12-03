@@ -26,6 +26,7 @@ const Conditions = () => {
   const { t } = useTranslation('conditions');
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const categoryKeys = ["all", "painManagement", "mentalHealth", "neurological", "sleepDisorders"];
 
@@ -119,7 +120,7 @@ const Conditions = () => {
   return (
     <PageTransition>
       <div className="min-h-screen bg-background">
-        <Header />
+        <Header onMenuStateChange={setMenuOpen} />
         <main className="pt-28 md:pt-32">
           {/* Hero Section */}
           <section className="bg-background py-16 md:py-20">
@@ -256,7 +257,7 @@ const Conditions = () => {
         </main>
         <Footer />
         <BackToTop />
-        <MobileBottomActions />
+        <MobileBottomActions menuOpen={menuOpen} />
       </div>
     </PageTransition>
   );
