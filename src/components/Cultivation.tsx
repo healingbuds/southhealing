@@ -38,7 +38,7 @@ const Cultivation = () => {
                 Production & Processing Excellence
               </h2>
               <p className="font-body text-white/95 text-xs sm:text-base md:text-lg leading-relaxed mb-4 sm:mb-8 drop-shadow-md">
-                Our state-of-the-art facilities across Canada and Portugal span more than 30,000 square meters dedicated to pharmaceutical-grade cannabis production. From seed selection through harvesting and processing, we maintain rigorous oversight at every production stage. Each batch undergoes comprehensive testing, precise trimming, controlled drying and curing, and careful packaging to ensure consistent quality that meets stringent third-party standards.
+                Our state-of-the-art facilities across South Africa and Portugal span more than 18,000 square metres dedicated to pharmaceutical-grade cannabis production, supporting our annual output of 60 tonnes. With access to diverse strains and genetics from our licensed partner network, we maintain rigorous oversight from seed selection through harvesting and processing. Each batch undergoes comprehensive testing, precise trimming, controlled drying and curing, and careful packaging to ensure consistent quality that meets stringent third-party standards.
               </p>
               <Link 
                 to="/what-we-do" 

@@ -699,9 +699,16 @@ const InteractiveMap = ({ selectedCountry, onCountrySelect }: InteractiveMapProp
                   <div className="text-[10px] font-bold text-foreground mb-1.5 uppercase tracking-wide">Active Regions</div>
                   <div className="flex flex-wrap gap-1.5">
                     <span className="px-2 py-1 bg-primary/15 text-primary text-[10px] rounded-md font-semibold border border-primary/30">South Africa</span>
-                    <span className="px-2 py-1 bg-secondary/15 text-secondary text-[10px] rounded-md font-semibold border border-secondary/30">Portugal (Soon)</span>
+                    <span className="px-2 py-1 bg-primary/15 text-primary text-[10px] rounded-md font-semibold border border-primary/30">Portugal</span>
                     <span className="px-2 py-1 bg-muted text-muted-foreground text-[10px] rounded-md font-semibold border border-border">UK (Coming)</span>
                   </div>
+                </div>
+                
+                <div>
+                  <div className="text-[10px] font-bold text-foreground mb-1.5 uppercase tracking-wide">Strains & Genetics</div>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Access to diverse cannabis strains and genetics through our licensed partner network for consistent, high-quality production.
+                  </p>
                 </div>
                 
                 <div className="pt-2 text-[10px] text-muted-foreground italic leading-relaxed">
