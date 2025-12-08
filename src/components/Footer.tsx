@@ -10,21 +10,23 @@ const Footer = () => {
   
   return (
     <footer id="contact" className="text-white relative overflow-hidden" style={{ backgroundColor: 'hsl(var(--section-color))' }}>
-      {/* Decorative flower line with extending horizontal line */}
-      <div className="absolute bottom-[40px] left-0 right-[80px] pointer-events-none">
-        <div className="relative flex items-center justify-end">
-          {/* Left extending line */}
-          <div className="flex-1 h-[1px] bg-gradient-to-r from-transparent via-white/10 to-white/15" />
+      {/* Decorative continuous line with integrated leaf */}
+      <div className="absolute bottom-[40px] left-0 right-0 pointer-events-none overflow-hidden">
+        <div className="relative flex items-center w-full">
+          {/* Single continuous line from left to right */}
+          <div className="absolute left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-white/15 to-transparent" style={{ top: '50%' }} />
           
-          {/* Right-aligned flower image */}
-          <div className="relative -mr-[10px]">
+          {/* Leaf image positioned on the line */}
+          <div className="absolute right-[60px] md:right-[100px]" style={{ top: '50%', transform: 'translateY(-50%)' }}>
             <img 
               src={flowerLine}
               alt=""
-              className="w-[180px] md:w-[220px] h-auto opacity-[0.15]"
+              className="w-[160px] md:w-[200px] h-auto opacity-[0.15]"
             />
           </div>
         </div>
+        {/* Spacer for height */}
+        <div className="h-[80px]" />
       </div>
       
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
