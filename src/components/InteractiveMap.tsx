@@ -392,14 +392,22 @@ const InteractiveMap = ({ selectedCountry, onCountrySelect }: InteractiveMapProp
           if (!hasCertification) return;
         }
 
+        const isMobileDevice = window.innerWidth < 640;
+        const isTablet = window.innerWidth >= 640 && window.innerWidth < 1024;
+        
         const el = document.createElement('div');
         el.className = 'marker';
-        el.style.width = '32px';
-        el.style.height = '32px';
+        // Larger touch targets for mobile/tablet
+        const markerSize = isMobileDevice ? '44px' : isTablet ? '40px' : '32px';
+        el.style.width = markerSize;
+        el.style.height = markerSize;
         el.style.borderRadius = '50%';
         el.style.cursor = 'pointer';
         el.style.transition = 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)';
         el.style.boxShadow = '0 4px 20px rgba(0,0,0,0.15), 0 1px 3px rgba(0,0,0,0.1), 0 0 0 3px white';
+        // iOS touch optimization
+        (el.style as any).webkitTapHighlightColor = 'transparent';
+        (el.style as any).touchAction = 'manipulation';
         
         // Sage green color palette for markers - using CSS tokens
         const colorMap: Record<LocationType, string> = {
@@ -426,13 +434,13 @@ const InteractiveMap = ({ selectedCountry, onCountrySelect }: InteractiveMapProp
         el.style.opacity = '0';
         el.style.transform = 'scale(0)';
 
-        // Quick stats tooltip - improved visibility
+        // Quick stats tooltip - improved visibility (hide on mobile, use click instead)
         const quickTooltip = new maplibregl.Popup({ 
-          offset: 15,
+          offset: isMobileDevice ? 20 : 15,
           className: 'map-quick-tooltip',
-          closeButton: false,
-          maxWidth: '240px',
-          closeOnClick: false,
+          closeButton: isMobileDevice,
+          maxWidth: isMobileDevice ? '260px' : '240px',
+          closeOnClick: isMobileDevice,
         })
           .setHTML(`
             <div style="padding: 10px 14px; font-family: 'Inter', system-ui, -apple-system, sans-serif; background: rgba(255, 255, 255, 0.97); backdrop-filter: blur(12px); border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.15), 0 0 0 1px rgba(162, 183, 86, 0.2); border: 1px solid rgba(162, 183, 86, 0.25);">
@@ -463,107 +471,118 @@ const InteractiveMap = ({ selectedCountry, onCountrySelect }: InteractiveMapProp
             </div>
           `);
         
-        el.addEventListener('mouseenter', () => {
-          el.style.transform = 'scale(1.4) translateY(-4px)';
-          el.style.boxShadow = `0 0 40px ${colorMap[location.type]}, 0 12px 32px rgba(0,0,0,0.3), 0 0 0 4px white`;
-          el.style.zIndex = '1000';
-          quickTooltip.addTo(map.current!);
+        // Desktop hover events only (not for touch devices)
+        if (!isMobileDevice) {
+          el.addEventListener('mouseenter', () => {
+            el.style.transform = 'scale(1.4) translateY(-4px)';
+            el.style.boxShadow = `0 0 40px ${colorMap[location.type]}, 0 12px 32px rgba(0,0,0,0.3), 0 0 0 4px white`;
+            el.style.zIndex = '1000';
+            quickTooltip.addTo(map.current!);
+            
+            // Smooth fly to the hovered marker
+            if (!isAutoTourActive) {
+              map.current?.flyTo({
+                center: location.coordinates,
+                zoom: Math.max(map.current.getZoom(), 6),
+                duration: 800,
+                curve: 1.2,
+                essential: true,
+              });
+            }
+          });
           
-          // Smooth fly to the hovered marker
-          if (!isAutoTourActive) {
-            map.current?.flyTo({
-              center: location.coordinates,
-              zoom: Math.max(map.current.getZoom(), 6),
-              duration: 800,
-              curve: 1.2,
-              essential: true,
-            });
-          }
-        });
+          el.addEventListener('mouseleave', () => {
+            el.style.transform = 'scale(1)';
+            el.style.boxShadow = '0 4px 20px rgba(0,0,0,0.15), 0 1px 3px rgba(0,0,0,0.1), 0 0 0 3px white';
+            el.style.zIndex = 'auto';
+            quickTooltip.remove();
+          });
+        }
         
-        el.addEventListener('mouseleave', () => {
-          el.style.transform = 'scale(1)';
-          el.style.boxShadow = '0 4px 20px rgba(0,0,0,0.15), 0 1px 3px rgba(0,0,0,0.1), 0 0 0 3px white';
-          el.style.zIndex = 'auto';
-          quickTooltip.remove();
-        });
-        
-        // Enhanced click interaction - show detailed popup
-        el.addEventListener('click', (e) => {
+        // Enhanced click/touch interaction - show detailed popup
+        const handleMarkerInteraction = (e: Event) => {
           e.stopPropagation();
           
-          // Create detailed popup
+          // On mobile, give visual feedback
+          if (isMobileDevice) {
+            el.style.transform = 'scale(1.2)';
+            setTimeout(() => {
+              el.style.transform = 'scale(1)';
+            }, 200);
+          }
+          
+          // Create detailed popup with mobile-optimized sizing
           const detailedPopup = new maplibregl.Popup({ 
-            offset: 35,
+            offset: isMobileDevice ? 30 : 35,
             className: 'map-popup-detailed',
             closeButton: true,
-            maxWidth: '420px',
+            maxWidth: isMobileDevice ? '300px' : isTablet ? '360px' : '420px',
             closeOnClick: true,
           })
             .setLngLat(location.coordinates)
             .setHTML(`
-              <div style="padding: 24px; font-family: 'Inter', system-ui, -apple-system, sans-serif; background: hsl(0, 0%, 100%); border-radius: 16px;">
-                <div style="display: flex; items-center: gap: 12px; margin-bottom: 16px;">
-                  <div style="width: 48px; height: 48px; border-radius: 12px; background: linear-gradient(135deg, ${colorMap[location.type]}, ${colorMap[location.type]}dd); display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5">
+              <div style="padding: ${isMobileDevice ? '16px' : '24px'}; font-family: 'Inter', system-ui, -apple-system, sans-serif; background: hsl(0, 0%, 100%); border-radius: ${isMobileDevice ? '12px' : '16px'};">
+                <div style="display: flex; align-items: center; gap: ${isMobileDevice ? '10px' : '12px'}; margin-bottom: ${isMobileDevice ? '12px' : '16px'};">
+                  <div style="width: ${isMobileDevice ? '40px' : '48px'}; height: ${isMobileDevice ? '40px' : '48px'}; border-radius: ${isMobileDevice ? '10px' : '12px'}; background: linear-gradient(135deg, ${colorMap[location.type]}, ${colorMap[location.type]}dd); display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.1); flex-shrink: 0;">
+                    <svg width="${isMobileDevice ? '20' : '24'}" height="${isMobileDevice ? '20' : '24'}" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5">
                       <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
                       <circle cx="12" cy="10" r="3"></circle>
                     </svg>
                   </div>
                   <div>
-                    <h3 style="font-size: 20px; font-weight: 700; color: #3A3E30; margin: 0; line-height: 1.2;">${location.name}</h3>
-                    <p style="font-size: 13px; color: #97A275; margin: 4px 0 0 0;">${countryData.name}</p>
+                    <h3 style="font-size: ${isMobileDevice ? '16px' : '20px'}; font-weight: 700; color: #3A3E30; margin: 0; line-height: 1.2;">${location.name}</h3>
+                    <p style="font-size: ${isMobileDevice ? '12px' : '13px'}; color: #97A275; margin: 4px 0 0 0;">${countryData.name}</p>
                   </div>
                 </div>
 
-                <div style="background: #F5F6F2; padding: 12px; border-radius: 10px; margin-bottom: 16px;">
-                  <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.8px; color: #97A275; font-weight: 600; margin-bottom: 6px;">Facility Type</div>
-                  <div style="font-size: 13px; font-weight: 600; color: ${colorMap[location.type]};">${typeLabels[location.type]}</div>
+                <div style="background: #F5F6F2; padding: ${isMobileDevice ? '10px' : '12px'}; border-radius: ${isMobileDevice ? '8px' : '10px'}; margin-bottom: ${isMobileDevice ? '12px' : '16px'};">
+                  <div style="font-size: ${isMobileDevice ? '9px' : '10px'}; text-transform: uppercase; letter-spacing: 0.8px; color: #97A275; font-weight: 600; margin-bottom: ${isMobileDevice ? '4px' : '6px'};">Facility Type</div>
+                  <div style="font-size: ${isMobileDevice ? '12px' : '13px'}; font-weight: 600; color: ${colorMap[location.type]};">${typeLabels[location.type]}</div>
                 </div>
 
                 ${location.cultivationArea || location.productionCapacity ? `
-                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: ${isMobileDevice ? '8px' : '12px'}; margin-bottom: ${isMobileDevice ? '12px' : '16px'};">
                     ${location.cultivationArea ? `
                       <div>
-                        <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.8px; color: #97A275; font-weight: 600; margin-bottom: 4px;">Cultivation Area</div>
-                        <div style="font-size: 16px; font-weight: 700; color: #3A3E30;">${location.cultivationArea}</div>
+                        <div style="font-size: ${isMobileDevice ? '9px' : '10px'}; text-transform: uppercase; letter-spacing: 0.8px; color: #97A275; font-weight: 600; margin-bottom: 4px;">Cultivation Area</div>
+                        <div style="font-size: ${isMobileDevice ? '14px' : '16px'}; font-weight: 700; color: #3A3E30;">${location.cultivationArea}</div>
                       </div>
                     ` : ''}
                     ${location.productionCapacity ? `
                       <div>
-                        <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.8px; color: #97A275; font-weight: 600; margin-bottom: 4px;">Production Capacity</div>
-                        <div style="font-size: 16px; font-weight: 700; color: #3A3E30;">${location.productionCapacity}</div>
+                        <div style="font-size: ${isMobileDevice ? '9px' : '10px'}; text-transform: uppercase; letter-spacing: 0.8px; color: #97A275; font-weight: 600; margin-bottom: 4px;">Production</div>
+                        <div style="font-size: ${isMobileDevice ? '14px' : '16px'}; font-weight: 700; color: #3A3E30;">${location.productionCapacity}</div>
                       </div>
                     ` : ''}
                   </div>
                 ` : ''}
 
                 ${location.certifications && location.certifications.length > 0 ? `
-                  <div style="margin-bottom: 16px;">
-                    <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.8px; color: #97A275; font-weight: 600; margin-bottom: 8px;">Certifications</div>
-                    <div style="display: flex; flex-wrap: wrap; gap: 6px;">
-                      ${location.certifications.map(cert => 
-                        `<span style="display: inline-flex; background: linear-gradient(135deg, #F5F6F2, #E8EAE0); color: #7A8266; padding: 6px 12px; border-radius: 8px; font-size: 11px; font-weight: 700; border: 1.5px solid #D4D8C8; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">${cert}</span>`
+                  <div style="margin-bottom: ${isMobileDevice ? '12px' : '16px'};">
+                    <div style="font-size: ${isMobileDevice ? '9px' : '10px'}; text-transform: uppercase; letter-spacing: 0.8px; color: #97A275; font-weight: 600; margin-bottom: ${isMobileDevice ? '6px' : '8px'};">Certifications</div>
+                    <div style="display: flex; flex-wrap: wrap; gap: ${isMobileDevice ? '4px' : '6px'};">
+                      ${location.certifications.slice(0, isMobileDevice ? 3 : location.certifications.length).map(cert => 
+                        `<span style="display: inline-flex; background: linear-gradient(135deg, #F5F6F2, #E8EAE0); color: #7A8266; padding: ${isMobileDevice ? '4px 8px' : '6px 12px'}; border-radius: ${isMobileDevice ? '6px' : '8px'}; font-size: ${isMobileDevice ? '10px' : '11px'}; font-weight: 700; border: 1.5px solid #D4D8C8; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">${cert}</span>`
                       ).join('')}
                     </div>
                   </div>
                 ` : ''}
 
                 ${location.licensedPartner ? `
-                  <div style="padding-top: 16px; border-top: 1px solid #E8EAE0;">
-                    <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.8px; color: #97A275; font-weight: 600; margin-bottom: 4px;">Licensed Partner</div>
-                    <div style="font-size: 12px; color: #3A3E30; font-weight: 500; line-height: 1.5;">${location.licensedPartner}</div>
+                  <div style="padding-top: ${isMobileDevice ? '12px' : '16px'}; border-top: 1px solid #E8EAE0;">
+                    <div style="font-size: ${isMobileDevice ? '9px' : '10px'}; text-transform: uppercase; letter-spacing: 0.8px; color: #97A275; font-weight: 600; margin-bottom: 4px;">Licensed Partner</div>
+                    <div style="font-size: ${isMobileDevice ? '11px' : '12px'}; color: #3A3E30; font-weight: 500; line-height: 1.5;">${location.licensedPartner}</div>
                   </div>
                 ` : ''}
               </div>
             `)
             .addTo(map.current!);
 
-          // Fly to location with smooth animation
+          // Fly to location with smooth animation (shorter duration on mobile)
           map.current?.flyTo({
             center: location.coordinates,
-            zoom: 8,
-            duration: 1500,
+            zoom: isMobileDevice ? 7 : 8,
+            duration: isMobileDevice ? 1000 : 1500,
             curve: 1.42,
             essential: true,
           });
@@ -575,7 +594,14 @@ const InteractiveMap = ({ selectedCountry, onCountrySelect }: InteractiveMapProp
             );
             if (countryId) onCountrySelect(countryId);
           }
-        });
+        };
+        
+        // Add both click and touch events for cross-platform support
+        el.addEventListener('click', handleMarkerInteraction);
+        el.addEventListener('touchend', (e) => {
+          e.preventDefault();
+          handleMarkerInteraction(e);
+        }, { passive: false });
 
         const typeLabels: Record<LocationType, string> = {
           'operations-sales': 'Operations & Sales',
@@ -759,12 +785,12 @@ const InteractiveMap = ({ selectedCountry, onCountrySelect }: InteractiveMapProp
         </div>
       </div>
 
-      {/* Auto-Tour Control */}
+      {/* Auto-Tour Control - Mobile optimized with larger touch target */}
       <div className="absolute bottom-4 left-4 sm:bottom-6 sm:left-6 z-30">
         <Button
           size="lg"
           onClick={toggleAutoTour}
-          className="gap-2 font-semibold shadow-2xl hover:shadow-[0_0_30px_rgba(77,191,161,0.4)] transition-all duration-300"
+          className="gap-2 font-semibold shadow-2xl hover:shadow-[0_0_30px_rgba(77,191,161,0.4)] transition-all duration-300 min-h-[48px] min-w-[48px] touch-manipulation px-3 sm:px-4"
         >
           {isAutoTourActive ? (
             <>
@@ -780,17 +806,17 @@ const InteractiveMap = ({ selectedCountry, onCountrySelect }: InteractiveMapProp
         </Button>
       </div>
 
-      {/* Layer Toggle Controls */}
-      <div className="absolute top-4 left-4 sm:top-6 sm:left-6 z-30 bg-background backdrop-blur-md rounded-2xl shadow-2xl border border-border/60 p-3">
-        <div className="flex flex-col gap-2">
-          <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1 px-2">
-            Filter Locations
+      {/* Layer Toggle Controls - Mobile optimized with larger touch targets */}
+      <div className="absolute top-4 left-4 sm:top-6 sm:left-6 z-30 bg-background/95 backdrop-blur-md rounded-2xl shadow-2xl border border-border/60 p-2 sm:p-3 max-w-[160px] sm:max-w-none">
+        <div className="flex flex-col gap-1 sm:gap-2">
+          <div className="text-[10px] sm:text-xs font-bold text-muted-foreground uppercase tracking-wider mb-0.5 sm:mb-1 px-2">
+            Filter
           </div>
           <Button
             size="sm"
             variant={activeLayer === 'all' ? 'default' : 'ghost'}
             onClick={() => setActiveLayer('all')}
-            className="justify-start text-sm font-semibold h-9"
+            className="justify-start text-xs sm:text-sm font-semibold h-10 sm:h-9 min-h-[44px] sm:min-h-0 touch-manipulation"
           >
             All Locations
           </Button>
@@ -798,58 +824,58 @@ const InteractiveMap = ({ selectedCountry, onCountrySelect }: InteractiveMapProp
             size="sm"
             variant={activeLayer === 'operations-sales' ? 'default' : 'ghost'}
             onClick={() => setActiveLayer('operations-sales')}
-            className="justify-start text-sm h-9"
+            className="justify-start text-xs sm:text-sm h-10 sm:h-9 min-h-[44px] sm:min-h-0 touch-manipulation"
           >
             <div 
-              className="w-3 h-3 rounded-full mr-2.5 border-2 shadow-sm" 
+              className="w-3 h-3 rounded-full mr-1.5 sm:mr-2.5 border-2 shadow-sm flex-shrink-0" 
               style={{ 
                 backgroundColor: activeLayer === 'operations-sales' ? 'hsl(var(--primary-foreground))' : 'hsl(142, 76%, 36%)',
                 borderColor: activeLayer === 'operations-sales' ? 'hsl(var(--primary-foreground))' : 'hsl(142, 76%, 36%)',
               }} 
             />
             <span className="hidden sm:inline">Operations & Sales</span>
-            <span className="sm:hidden">Ops & Sales</span>
+            <span className="sm:hidden text-[11px]">Ops & Sales</span>
           </Button>
           <Button
             size="sm"
             variant={activeLayer === 'export-only' ? 'default' : 'ghost'}
             onClick={() => setActiveLayer('export-only')}
-            className="justify-start text-sm h-9"
+            className="justify-start text-xs sm:text-sm h-10 sm:h-9 min-h-[44px] sm:min-h-0 touch-manipulation"
           >
             <div 
-              className="w-3 h-3 rounded-full mr-2.5 border-2 shadow-sm" 
+              className="w-3 h-3 rounded-full mr-1.5 sm:mr-2.5 border-2 shadow-sm flex-shrink-0" 
               style={{ 
                 backgroundColor: activeLayer === 'export-only' ? 'hsl(var(--primary-foreground))' : 'hsl(160, 84%, 39%)',
                 borderColor: activeLayer === 'export-only' ? 'hsl(var(--primary-foreground))' : 'hsl(160, 84%, 39%)',
               }} 
             />
             <span className="hidden sm:inline">Export Only</span>
-            <span className="sm:hidden">Export</span>
+            <span className="sm:hidden text-[11px]">Export</span>
           </Button>
           <Button
             size="sm"
             variant={activeLayer === 'operations-only' ? 'default' : 'ghost'}
             onClick={() => setActiveLayer('operations-only')}
-            className="justify-start text-sm h-9"
+            className="justify-start text-xs sm:text-sm h-10 sm:h-9 min-h-[44px] sm:min-h-0 touch-manipulation"
           >
             <div 
-              className="w-3 h-3 rounded-full mr-2.5 border-2 shadow-sm" 
+              className="w-3 h-3 rounded-full mr-1.5 sm:mr-2.5 border-2 shadow-sm flex-shrink-0" 
               style={{ 
                 backgroundColor: activeLayer === 'operations-only' ? 'hsl(var(--primary-foreground))' : 'hsl(173, 58%, 39%)',
                 borderColor: activeLayer === 'operations-only' ? 'hsl(var(--primary-foreground))' : 'hsl(173, 58%, 39%)',
               }} 
             />
             <span className="hidden sm:inline">Operations Only</span>
-            <span className="sm:hidden">Operations</span>
+            <span className="sm:hidden text-[11px]">Ops Only</span>
           </Button>
           
-          {/* Certification Filter Toggle */}
-          <div className="mt-3 pt-3 border-t border-border/40">
+          {/* Certification Filter Toggle - Hidden on mobile for cleaner UI */}
+          <div className="mt-2 sm:mt-3 pt-2 sm:pt-3 border-t border-border/40 hidden sm:block">
             <Button
               size="sm"
               variant="ghost"
               onClick={() => setShowCertFilter(!showCertFilter)}
-              className="justify-between text-sm h-9 w-full"
+              className="justify-between text-xs sm:text-sm h-10 sm:h-9 min-h-[44px] sm:min-h-0 w-full touch-manipulation"
             >
               <span className="flex items-center gap-2">
                 <Filter className="w-3.5 h-3.5" />

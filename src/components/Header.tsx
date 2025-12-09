@@ -1,7 +1,7 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { ChevronDown, Menu, X, LogOut } from "lucide-react";
 import hbLogoWhite from "@/assets/hb-logo-white-new.png";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import EligibilityDialog from "./EligibilityDialog";
 import { motion, AnimatePresence, useScroll, useSpring } from "framer-motion";
@@ -30,6 +30,11 @@ const Header = ({ onMenuStateChange }: HeaderProps) => {
   const location = useLocation();
   const { t } = useTranslation('common');
   
+  // Refs for click-outside detection
+  const whatWeDoRef = useRef<HTMLDivElement>(null);
+  const aboutUsRef = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLElement>(null);
+  
   // Scroll progress tracking
   const { scrollYProgress } = useScroll();
   const scaleX = useSpring(scrollYProgress, {
@@ -37,6 +42,29 @@ const Header = ({ onMenuStateChange }: HeaderProps) => {
     damping: 30,
     restDelta: 0.001
   });
+
+  // Click outside handler
+  const handleClickOutside = useCallback((event: MouseEvent | TouchEvent) => {
+    const target = event.target as Node;
+    
+    // Close desktop dropdowns when clicking outside
+    if (whatWeDoRef.current && !whatWeDoRef.current.contains(target)) {
+      setWhatWeDoOpen(false);
+    }
+    if (aboutUsRef.current && !aboutUsRef.current.contains(target)) {
+      setAboutUsOpen(false);
+    }
+  }, []);
+
+  // Add click-outside listener
+  useEffect(() => {
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [handleClickOutside]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -89,6 +117,13 @@ const Header = ({ onMenuStateChange }: HeaderProps) => {
     }
   }, [mobileMenuOpen]);
 
+  // Close dropdowns on route change
+  useEffect(() => {
+    setWhatWeDoOpen(false);
+    setAboutUsOpen(false);
+    setMobileMenuOpen(false);
+  }, [location.pathname]);
+
   return (
     <>
       {/* Scroll Progress Bar with Background Track */}
@@ -103,6 +138,7 @@ const Header = ({ onMenuStateChange }: HeaderProps) => {
       </div>
       
       <header 
+        ref={headerRef}
         className={cn(
           "fixed top-2 left-2 right-2 z-50 backdrop-blur-xl rounded-xl transition-all duration-500 ease-out border",
           scrolled 
@@ -117,18 +153,18 @@ const Header = ({ onMenuStateChange }: HeaderProps) => {
         <div className="container mx-auto px-3 sm:px-4 lg:px-6 xl:px-8">
           <div className={cn(
             "flex items-center justify-between transition-all duration-500 ease-out",
-            scrolled ? "h-16 md:h-18" : "h-18 md:h-24"
+            scrolled ? "h-20 md:h-22" : "h-24 md:h-28"
           )}>
             <Link to="/" className="flex items-center flex-shrink-0 group">
-            <img 
-              src={hbLogoWhite} 
-              alt="Healing Buds Logo" 
-              className={cn(
-                "w-auto object-contain transition-all duration-500 ease-out group-hover:scale-105",
-                scrolled ? "h-8 sm:h-10 md:h-12" : "h-10 sm:h-12 md:h-14"
-              )}
-            />
-          </Link>
+              <img 
+                src={hbLogoWhite} 
+                alt="Healing Buds Logo" 
+                className={cn(
+                  "w-auto object-contain transition-all duration-500 ease-out group-hover:scale-105",
+                  scrolled ? "h-12 sm:h-14 md:h-16" : "h-14 sm:h-16 md:h-20"
+                )}
+              />
+            </Link>
           
           {/* Desktop Navigation */}
           <nav className={cn(
@@ -136,15 +172,20 @@ const Header = ({ onMenuStateChange }: HeaderProps) => {
             scrolled ? "gap-2 xl:gap-3" : "gap-3 xl:gap-4"
           )}>
             <div 
+              ref={whatWeDoRef}
               className="relative group"
               onMouseEnter={() => setWhatWeDoOpen(true)}
               onMouseLeave={() => setWhatWeDoOpen(false)}
             >
               <button 
                 type="button"
-                onClick={() => setWhatWeDoOpen(!whatWeDoOpen)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setWhatWeDoOpen(!whatWeDoOpen);
+                  setAboutUsOpen(false);
+                }}
                 className={cn(
-                  "font-body flex items-center gap-1 font-medium transition-all duration-300 ease-out relative rounded-md hover:scale-105 whitespace-nowrap cursor-pointer",
+                  "font-body flex items-center gap-1 font-medium transition-all duration-300 ease-out relative rounded-md hover:scale-105 whitespace-nowrap cursor-pointer select-none",
                   scrolled ? "text-xs xl:text-sm px-2 py-1" : "text-xs xl:text-sm px-2 xl:px-3 py-1.5",
                   isWhatWeDoActive
                     ? "text-white bg-white/10" 
@@ -152,48 +193,54 @@ const Header = ({ onMenuStateChange }: HeaderProps) => {
                 )}
               >
                 {t('nav.whatWeDo')}
-                <ChevronDown className={cn("w-3 h-3 xl:w-4 xl:h-4 transition-transform duration-150", whatWeDoOpen && "rotate-180")} />
+                <ChevronDown className={cn("w-3 h-3 xl:w-4 xl:h-4 transition-transform duration-150 pointer-events-none", whatWeDoOpen && "rotate-180")} />
               </button>
               
               {/* Dropdown Menu - Linear style */}
-              {whatWeDoOpen && (
-                <div 
-                  className="absolute top-full left-0 mt-2 w-72 bg-card rounded-xl shadow-card border border-border/40 overflow-hidden z-[100] animate-fade-in"
-                >
-                <Link
-                  to="/cultivating-processing"
-                  className="block px-4 py-3 text-card-foreground hover:bg-muted transition-colors border-b border-border"
-                  onClick={() => setWhatWeDoOpen(false)}
-                >
-                  <div className="font-medium">{t('dropdown.cultivating')}</div>
-                  <div className="text-sm text-muted-foreground">{t('dropdown.cultivatingDesc')}</div>
-                </Link>
-                <Link
-                  to="/manufacture-distribution"
-                  className="block px-4 py-3 text-card-foreground hover:bg-muted transition-colors border-b border-border"
-                  onClick={() => setWhatWeDoOpen(false)}
-                >
-                  <div className="font-medium">{t('dropdown.manufacture')}</div>
-                  <div className="text-sm text-muted-foreground">{t('dropdown.manufactureDesc')}</div>
-                </Link>
-                <Link
-                  to="/medical-clinics"
-                  className="block px-4 py-3 text-card-foreground hover:bg-muted transition-colors border-b border-border"
-                  onClick={() => setWhatWeDoOpen(false)}
-                >
-                  <div className="font-medium">{t('dropdown.clinics')}</div>
-                  <div className="text-sm text-muted-foreground">{t('dropdown.clinicsDesc')}</div>
-                </Link>
-                <Link
-                  to="/online-pharmacy"
-                  className="block px-4 py-3 text-card-foreground hover:bg-muted transition-colors"
-                  onClick={() => setWhatWeDoOpen(false)}
-                >
-                  <div className="font-medium">{t('dropdown.pharmacy')}</div>
-                  <div className="text-sm text-muted-foreground">{t('dropdown.pharmacyDesc')}</div>
-                </Link>
-              </div>
-              )}
+              <AnimatePresence>
+                {whatWeDoOpen && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute top-full left-0 mt-2 w-72 bg-card rounded-xl shadow-card border border-border/40 overflow-hidden z-[100]"
+                  >
+                    <Link
+                      to="/cultivating-processing"
+                      className="block px-4 py-3 text-card-foreground hover:bg-muted transition-colors border-b border-border"
+                      onClick={() => setWhatWeDoOpen(false)}
+                    >
+                      <div className="font-medium">{t('dropdown.cultivating')}</div>
+                      <div className="text-sm text-muted-foreground">{t('dropdown.cultivatingDesc')}</div>
+                    </Link>
+                    <Link
+                      to="/manufacture-distribution"
+                      className="block px-4 py-3 text-card-foreground hover:bg-muted transition-colors border-b border-border"
+                      onClick={() => setWhatWeDoOpen(false)}
+                    >
+                      <div className="font-medium">{t('dropdown.manufacture')}</div>
+                      <div className="text-sm text-muted-foreground">{t('dropdown.manufactureDesc')}</div>
+                    </Link>
+                    <Link
+                      to="/medical-clinics"
+                      className="block px-4 py-3 text-card-foreground hover:bg-muted transition-colors border-b border-border"
+                      onClick={() => setWhatWeDoOpen(false)}
+                    >
+                      <div className="font-medium">{t('dropdown.clinics')}</div>
+                      <div className="text-sm text-muted-foreground">{t('dropdown.clinicsDesc')}</div>
+                    </Link>
+                    <Link
+                      to="/online-pharmacy"
+                      className="block px-4 py-3 text-card-foreground hover:bg-muted transition-colors"
+                      onClick={() => setWhatWeDoOpen(false)}
+                    >
+                      <div className="font-medium">{t('dropdown.pharmacy')}</div>
+                      <div className="text-sm text-muted-foreground">{t('dropdown.pharmacyDesc')}</div>
+                    </Link>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
             <Link 
               to="/research" 
@@ -220,15 +267,20 @@ const Header = ({ onMenuStateChange }: HeaderProps) => {
               {t('nav.theWire')}
             </Link>
             <div 
+              ref={aboutUsRef}
               className="relative group"
               onMouseEnter={() => setAboutUsOpen(true)}
               onMouseLeave={() => setAboutUsOpen(false)}
             >
               <button 
                 type="button"
-                onClick={() => setAboutUsOpen(!aboutUsOpen)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setAboutUsOpen(!aboutUsOpen);
+                  setWhatWeDoOpen(false);
+                }}
                 className={cn(
-                  "font-body flex items-center gap-1 font-medium transition-all duration-300 ease-out relative rounded-md hover:scale-105 whitespace-nowrap cursor-pointer",
+                  "font-body flex items-center gap-1 font-medium transition-all duration-300 ease-out relative rounded-md hover:scale-105 whitespace-nowrap cursor-pointer select-none",
                   scrolled ? "text-xs xl:text-sm px-2 py-1" : "text-xs xl:text-sm px-2 xl:px-3 py-1.5",
                   isAboutUsActive
                     ? "text-white bg-white/10" 
@@ -236,32 +288,38 @@ const Header = ({ onMenuStateChange }: HeaderProps) => {
                 )}
               >
                 {t('nav.aboutUs')}
-                <ChevronDown className={cn("w-3 h-3 xl:w-4 xl:h-4 transition-transform duration-150", aboutUsOpen && "rotate-180")} />
+                <ChevronDown className={cn("w-3 h-3 xl:w-4 xl:h-4 transition-transform duration-150 pointer-events-none", aboutUsOpen && "rotate-180")} />
               </button>
               
               {/* Dropdown Menu */}
-              {aboutUsOpen && (
-                <div 
-                  className="absolute top-full left-0 mt-2 w-72 bg-card rounded-xl shadow-card border border-border/40 overflow-hidden z-[100] animate-fade-in"
-                >
-                <Link
-                  to="/about-us"
-                  className="block px-4 py-3 text-card-foreground hover:bg-muted transition-colors border-b border-border"
-                  onClick={() => setAboutUsOpen(false)}
-                >
-                  <div className="font-medium">{t('dropdown.aboutHealing')}</div>
-                  <div className="text-sm text-muted-foreground">{t('dropdown.aboutHealingDesc')}</div>
-                </Link>
-                <Link
-                  to="/blockchain-technology"
-                  className="block px-4 py-3 text-card-foreground hover:bg-muted transition-colors"
-                  onClick={() => setAboutUsOpen(false)}
-                >
-                  <div className="font-medium">{t('dropdown.blockchain')}</div>
-                  <div className="text-sm text-muted-foreground">{t('dropdown.blockchainDesc')}</div>
-                </Link>
-              </div>
-              )}
+              <AnimatePresence>
+                {aboutUsOpen && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute top-full left-0 mt-2 w-72 bg-card rounded-xl shadow-card border border-border/40 overflow-hidden z-[100]"
+                  >
+                    <Link
+                      to="/about-us"
+                      className="block px-4 py-3 text-card-foreground hover:bg-muted transition-colors border-b border-border"
+                      onClick={() => setAboutUsOpen(false)}
+                    >
+                      <div className="font-medium">{t('dropdown.aboutHealing')}</div>
+                      <div className="text-sm text-muted-foreground">{t('dropdown.aboutHealingDesc')}</div>
+                    </Link>
+                    <Link
+                      to="/blockchain-technology"
+                      className="block px-4 py-3 text-card-foreground hover:bg-muted transition-colors"
+                      onClick={() => setAboutUsOpen(false)}
+                    >
+                      <div className="font-medium">{t('dropdown.blockchain')}</div>
+                      <div className="text-sm text-muted-foreground">{t('dropdown.blockchainDesc')}</div>
+                    </Link>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
             <Link 
               to="/contact" 
@@ -337,20 +395,22 @@ const Header = ({ onMenuStateChange }: HeaderProps) => {
           <EligibilityDialog open={eligibilityDialogOpen} onOpenChange={setEligibilityDialogOpen} />
 
           {/* Mobile Menu Button & Theme Toggle */}
-          <div className="lg:hidden flex items-center gap-2">
+          <div className="lg:hidden flex items-center gap-3">
             <ThemeToggle />
             <button
+              type="button"
               className={cn(
-                "text-white p-2 transition-all duration-300 hover:scale-110 active:scale-95",
-                scrolled && "p-1.5"
+                "text-white p-3 rounded-xl transition-all duration-300 hover:scale-110 active:scale-95 touch-manipulation min-h-[48px] min-w-[48px] flex items-center justify-center",
+                "hover:bg-white/10 active:bg-white/20",
+                scrolled && "p-2.5"
               )}
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               aria-label="Toggle menu"
             >
               {mobileMenuOpen ? (
-                <X className={cn("transition-all duration-300", scrolled ? "w-5 h-5" : "w-6 h-6")} />
+                <X className={cn("transition-all duration-300", scrolled ? "w-6 h-6" : "w-7 h-7")} />
               ) : (
-                <Menu className={cn("transition-all duration-300", scrolled ? "w-5 h-5" : "w-6 h-6")} />
+                <Menu className={cn("transition-all duration-300", scrolled ? "w-6 h-6" : "w-7 h-7")} />
               )}
             </button>
           </div>
@@ -389,12 +449,12 @@ const Header = ({ onMenuStateChange }: HeaderProps) => {
                           setMobileWhatWeDoOpen(!mobileWhatWeDoOpen);
                         }}
                         className={cn(
-                          "w-full font-semibold text-sm py-3 px-4 rounded-xl flex items-center justify-between transition-all cursor-pointer touch-manipulation",
-                          isWhatWeDoActive ? "text-white bg-white/10" : "text-white/90 hover:bg-white/5"
+                          "w-full font-semibold text-base py-4 px-5 rounded-xl flex items-center justify-between transition-all cursor-pointer touch-manipulation min-h-[56px] active:scale-[0.98]",
+                          isWhatWeDoActive ? "text-white bg-white/15" : "text-white/90 hover:bg-white/5 active:bg-white/10"
                         )}
                       >
                         {t('nav.whatWeDo')}
-                        <ChevronDown className={cn("w-4 h-4 transition-transform duration-200 pointer-events-none", mobileWhatWeDoOpen && "rotate-180")} />
+                        <ChevronDown className={cn("w-5 h-5 transition-transform duration-200 pointer-events-none", mobileWhatWeDoOpen && "rotate-180")} />
                       </button>
                       <AnimatePresence>
                         {mobileWhatWeDoOpen && (
@@ -405,31 +465,31 @@ const Header = ({ onMenuStateChange }: HeaderProps) => {
                             transition={{ duration: 0.2 }}
                             className="overflow-hidden pl-4 border-l-2 border-white/20 ml-4"
                           >
-                            <div className="space-y-1 py-1">
+                            <div className="space-y-1 py-2">
                               <Link 
                                 to="/cultivating-processing" 
-                                className="block text-sm text-white/70 hover:text-white hover:bg-white/5 py-3 px-4 rounded-xl transition-all"
+                                className="block text-base text-white/70 hover:text-white hover:bg-white/5 active:bg-white/10 py-4 px-5 rounded-xl transition-all touch-manipulation min-h-[52px]"
                                 onClick={() => setMobileMenuOpen(false)}
                               >
                                 {t('dropdown.cultivating')}
                               </Link>
                               <Link 
                                 to="/manufacture-distribution" 
-                                className="block text-sm text-white/70 hover:text-white hover:bg-white/5 py-3 px-4 rounded-xl transition-all"
+                                className="block text-base text-white/70 hover:text-white hover:bg-white/5 active:bg-white/10 py-4 px-5 rounded-xl transition-all touch-manipulation min-h-[52px]"
                                 onClick={() => setMobileMenuOpen(false)}
                               >
                                 {t('dropdown.manufacture')}
                               </Link>
                               <Link 
                                 to="/medical-clinics" 
-                                className="block text-sm text-white/70 hover:text-white hover:bg-white/5 py-3 px-4 rounded-xl transition-all"
+                                className="block text-base text-white/70 hover:text-white hover:bg-white/5 active:bg-white/10 py-4 px-5 rounded-xl transition-all touch-manipulation min-h-[52px]"
                                 onClick={() => setMobileMenuOpen(false)}
                               >
                                 {t('dropdown.clinics')}
                               </Link>
                               <Link 
                                 to="/online-pharmacy" 
-                                className="block text-sm text-white/70 hover:text-white hover:bg-white/5 py-3 px-4 rounded-xl transition-all"
+                                className="block text-base text-white/70 hover:text-white hover:bg-white/5 active:bg-white/10 py-4 px-5 rounded-xl transition-all touch-manipulation min-h-[52px]"
                                 onClick={() => setMobileMenuOpen(false)}
                               >
                                 {t('dropdown.pharmacy')}
@@ -443,8 +503,8 @@ const Header = ({ onMenuStateChange }: HeaderProps) => {
                     <Link 
                       to="/research" 
                       className={cn(
-                        "text-sm transition-all duration-200 py-3 px-4 rounded-xl",
-                        isActive("/research") ? "text-white font-semibold bg-white/10" : "text-white/70 hover:text-white hover:bg-white/5"
+                        "text-base transition-all duration-200 py-4 px-5 rounded-xl touch-manipulation min-h-[56px] flex items-center active:scale-[0.98]",
+                        isActive("/research") ? "text-white font-semibold bg-white/15" : "text-white/70 hover:text-white hover:bg-white/5 active:bg-white/10"
                       )}
                       onClick={() => setMobileMenuOpen(false)}
                     >
@@ -454,8 +514,8 @@ const Header = ({ onMenuStateChange }: HeaderProps) => {
                     <Link 
                       to="/the-wire" 
                       className={cn(
-                        "text-sm transition-all duration-200 py-3 px-4 rounded-xl",
-                        isActive("/the-wire") || location.pathname.startsWith("/the-wire/") ? "text-white font-semibold bg-white/10" : "text-white/70 hover:text-white hover:bg-white/5"
+                        "text-base transition-all duration-200 py-4 px-5 rounded-xl touch-manipulation min-h-[56px] flex items-center active:scale-[0.98]",
+                        isActive("/the-wire") || location.pathname.startsWith("/the-wire/") ? "text-white font-semibold bg-white/15" : "text-white/70 hover:text-white hover:bg-white/5 active:bg-white/10"
                       )}
                       onClick={() => setMobileMenuOpen(false)}
                     >
@@ -472,12 +532,12 @@ const Header = ({ onMenuStateChange }: HeaderProps) => {
                           setMobileAboutUsOpen(!mobileAboutUsOpen);
                         }}
                         className={cn(
-                          "w-full font-semibold text-sm py-3 px-4 rounded-xl flex items-center justify-between transition-all cursor-pointer touch-manipulation",
-                          isAboutUsActive ? "text-white bg-white/10" : "text-white/90 hover:bg-white/5"
+                          "w-full font-semibold text-base py-4 px-5 rounded-xl flex items-center justify-between transition-all cursor-pointer touch-manipulation min-h-[56px] active:scale-[0.98]",
+                          isAboutUsActive ? "text-white bg-white/15" : "text-white/90 hover:bg-white/5 active:bg-white/10"
                         )}
                       >
                         {t('nav.aboutUs')}
-                        <ChevronDown className={cn("w-4 h-4 transition-transform duration-200 pointer-events-none", mobileAboutUsOpen && "rotate-180")} />
+                        <ChevronDown className={cn("w-5 h-5 transition-transform duration-200 pointer-events-none", mobileAboutUsOpen && "rotate-180")} />
                       </button>
                       <AnimatePresence>
                         {mobileAboutUsOpen && (
@@ -488,17 +548,17 @@ const Header = ({ onMenuStateChange }: HeaderProps) => {
                             transition={{ duration: 0.2 }}
                             className="overflow-hidden pl-4 border-l-2 border-white/20 ml-4"
                           >
-                            <div className="space-y-1 py-1">
+                            <div className="space-y-1 py-2">
                               <Link 
                                 to="/about-us" 
-                                className="block text-sm text-white/70 hover:text-white hover:bg-white/5 py-3 px-4 rounded-xl transition-all"
+                                className="block text-base text-white/70 hover:text-white hover:bg-white/5 active:bg-white/10 py-4 px-5 rounded-xl transition-all touch-manipulation min-h-[52px]"
                                 onClick={() => setMobileMenuOpen(false)}
                               >
                                 {t('dropdown.aboutHealing')}
                               </Link>
                               <Link 
                                 to="/blockchain-technology" 
-                                className="block text-sm text-white/70 hover:text-white hover:bg-white/5 py-3 px-4 rounded-xl transition-all"
+                                className="block text-base text-white/70 hover:text-white hover:bg-white/5 active:bg-white/10 py-4 px-5 rounded-xl transition-all touch-manipulation min-h-[52px]"
                                 onClick={() => setMobileMenuOpen(false)}
                               >
                                 {t('dropdown.blockchain')}
@@ -512,8 +572,8 @@ const Header = ({ onMenuStateChange }: HeaderProps) => {
                     <Link 
                       to="/contact" 
                       className={cn(
-                        "text-sm transition-all duration-200 py-3 px-4 rounded-xl",
-                        isActive("/contact") ? "text-white font-semibold bg-white/10" : "text-white/70 hover:text-white hover:bg-white/5"
+                        "text-base transition-all duration-200 py-4 px-5 rounded-xl touch-manipulation min-h-[56px] flex items-center active:scale-[0.98]",
+                        isActive("/contact") ? "text-white font-semibold bg-white/15" : "text-white/70 hover:text-white hover:bg-white/5 active:bg-white/10"
                       )}
                       onClick={() => setMobileMenuOpen(false)}
                     >
@@ -525,29 +585,31 @@ const Header = ({ onMenuStateChange }: HeaderProps) => {
                   <div className="my-6 border-t border-white/10" />
 
                   {/* Mobile CTAs inside menu */}
-                  <div className="space-y-3">
+                  <div className="space-y-4">
                     <button
+                      type="button"
                       onClick={() => {
                         setEligibilityDialogOpen(true);
                         setMobileMenuOpen(false);
                       }}
-                      className="w-full font-body font-semibold px-6 py-4 rounded-2xl transition-all duration-300 ease-out active:scale-[0.96] shadow-lg backdrop-blur-2xl bg-gradient-to-br from-white/35 via-white/25 to-white/15 border border-white/50 text-white text-sm hover:from-white/45 hover:via-white/35 hover:to-white/25 hover:border-white/70 hover:shadow-xl focus-ring"
+                      className="w-full font-body font-semibold px-6 py-5 rounded-2xl transition-all duration-300 ease-out active:scale-[0.96] shadow-lg backdrop-blur-2xl bg-gradient-to-br from-white/35 via-white/25 to-white/15 border border-white/50 text-white text-base hover:from-white/45 hover:via-white/35 hover:to-white/25 hover:border-white/70 hover:shadow-xl touch-manipulation min-h-[60px]"
                     >
                       {t('nav.checkEligibility')}
                     </button>
                     {user ? (
                       <button
+                        type="button"
                         onClick={handleLogout}
-                        className="w-full font-body font-semibold px-6 py-4 rounded-2xl transition-all duration-300 ease-out active:scale-[0.96] shadow-lg backdrop-blur-2xl bg-gradient-to-br from-white/25 via-white/18 to-white/12 border border-white/40 text-white text-sm flex items-center justify-center gap-2 hover:from-white/35 hover:via-white/28 hover:to-white/22 hover:border-white/60 hover:shadow-xl focus-ring"
+                        className="w-full font-body font-semibold px-6 py-5 rounded-2xl transition-all duration-300 ease-out active:scale-[0.96] shadow-lg backdrop-blur-2xl bg-gradient-to-br from-white/25 via-white/18 to-white/12 border border-white/40 text-white text-base flex items-center justify-center gap-2 hover:from-white/35 hover:via-white/28 hover:to-white/22 hover:border-white/60 hover:shadow-xl touch-manipulation min-h-[60px]"
                       >
-                        <LogOut className="w-4 h-4" />
+                        <LogOut className="w-5 h-5" />
                         {t('nav.signOut')}
                       </button>
                     ) : (
                       <Link
                         to="/auth"
                         onClick={() => setMobileMenuOpen(false)}
-                        className="block w-full text-center font-body font-semibold px-6 py-4 rounded-2xl transition-all duration-300 ease-out active:scale-[0.96] shadow-lg backdrop-blur-2xl bg-gradient-to-br from-white/25 via-white/18 to-white/12 border border-white/40 text-white text-sm hover:from-white/35 hover:via-white/28 hover:to-white/22 hover:border-white/60 hover:shadow-xl focus-ring"
+                        className="flex items-center justify-center w-full text-center font-body font-semibold px-6 py-5 rounded-2xl transition-all duration-300 ease-out active:scale-[0.96] shadow-lg backdrop-blur-2xl bg-gradient-to-br from-white/25 via-white/18 to-white/12 border border-white/40 text-white text-base hover:from-white/35 hover:via-white/28 hover:to-white/22 hover:border-white/60 hover:shadow-xl touch-manipulation min-h-[60px]"
                       >
                         {t('nav.patientLogin')}
                       </Link>
