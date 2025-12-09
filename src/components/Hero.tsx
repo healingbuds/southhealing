@@ -176,16 +176,49 @@ const Hero = () => {
             </motion.h1>
           </div>
           
-          {/* Transparent logo overlay with parallax */}
-          <motion.img 
-            initial={{ opacity: 0, scale: 0.8, rotate: -5 }}
-            animate={{ opacity: 0.15, scale: 1, rotate: 0 }}
-            style={{ y: logoY, scale: logoScale }}
-            transition={{ duration: 1.2, delay: 0.5, ease: [0.25, 0.4, 0.25, 1] }}
-            src={hbLogoSquare} 
-            alt="" 
-            className="hidden md:block absolute right-0 md:right-8 lg:right-20 top-1/2 -translate-y-1/2 w-[280px] md:w-[340px] lg:w-[420px] h-auto pointer-events-none origin-center"
-          />
+          {/* Transparent logo overlay with parallax and mosaic fade effect */}
+          <div className="hidden md:block absolute right-0 md:right-8 lg:right-20 top-1/4 w-[280px] md:w-[340px] lg:w-[420px] h-[280px] md:h-[340px] lg:h-[420px] pointer-events-none">
+            {/* Mosaic grid animation overlay */}
+            <div className="absolute inset-0 grid grid-cols-4 grid-rows-4 gap-0">
+              {[...Array(16)].map((_, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 1 }}
+                  animate={{ opacity: [1, 0.4, 0.8, 1] }}
+                  transition={{
+                    duration: 4,
+                    delay: i * 0.15,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                  }}
+                  className="relative overflow-hidden"
+                  style={{
+                    clipPath: 'inset(0)',
+                  }}
+                >
+                  <motion.img
+                    src={hbLogoSquare}
+                    alt=""
+                    className="absolute w-[280px] md:w-[340px] lg:w-[420px] h-[280px] md:h-[340px] lg:h-[420px] object-contain opacity-[0.06]"
+                    style={{
+                      top: `-${Math.floor(i / 4) * 25}%`,
+                      left: `-${(i % 4) * 25}%`,
+                    }}
+                  />
+                </motion.div>
+              ))}
+            </div>
+            {/* Main logo with subtle glow */}
+            <motion.img 
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 0.08, scale: 1 }}
+              style={{ y: logoY, scale: logoScale }}
+              transition={{ duration: 1.5, delay: 0.5, ease: [0.25, 0.4, 0.25, 1] }}
+              src={hbLogoSquare} 
+              alt="" 
+              className="absolute inset-0 w-full h-full object-contain origin-center mix-blend-soft-light"
+            />
+          </div>
           
           <motion.p 
             initial={{ opacity: 0, y: 30 }}
