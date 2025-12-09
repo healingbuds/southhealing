@@ -132,7 +132,7 @@ const Header = ({ onMenuStateChange }: HeaderProps) => {
           
           {/* Desktop Navigation */}
           <nav className={cn(
-            "hidden lg:flex items-center flex-1 justify-end overflow-hidden transition-all duration-500 ease-out",
+            "hidden lg:flex items-center flex-1 justify-end transition-all duration-500 ease-out",
             scrolled ? "gap-2 xl:gap-3" : "gap-3 xl:gap-4"
           )}>
             <div 
@@ -156,12 +156,10 @@ const Header = ({ onMenuStateChange }: HeaderProps) => {
               </button>
               
               {/* Dropdown Menu - Linear style */}
-              <div 
-                className={cn(
-                  "absolute top-full left-0 mt-2 w-72 bg-card rounded-xl shadow-card border border-border/40 overflow-hidden transition-all duration-150 z-50",
-                  whatWeDoOpen ? "opacity-100 visible translate-y-0" : "opacity-0 invisible -translate-y-1"
-                )}
-              >
+              {whatWeDoOpen && (
+                <div 
+                  className="absolute top-full left-0 mt-2 w-72 bg-card rounded-xl shadow-card border border-border/40 overflow-hidden z-[100] animate-fade-in"
+                >
                 <Link
                   to="/cultivating-processing"
                   className="block px-4 py-3 text-card-foreground hover:bg-muted transition-colors border-b border-border"
@@ -195,6 +193,7 @@ const Header = ({ onMenuStateChange }: HeaderProps) => {
                   <div className="text-sm text-muted-foreground">{t('dropdown.pharmacyDesc')}</div>
                 </Link>
               </div>
+              )}
             </div>
             <Link 
               to="/research" 
@@ -241,12 +240,10 @@ const Header = ({ onMenuStateChange }: HeaderProps) => {
               </button>
               
               {/* Dropdown Menu */}
-              <div 
-                className={cn(
-                  "absolute top-full left-0 mt-2 w-72 bg-card rounded-xl shadow-card border border-border/40 overflow-hidden transition-all duration-150 z-50",
-                  aboutUsOpen ? "opacity-100 visible translate-y-0" : "opacity-0 invisible -translate-y-1"
-                )}
-              >
+              {aboutUsOpen && (
+                <div 
+                  className="absolute top-full left-0 mt-2 w-72 bg-card rounded-xl shadow-card border border-border/40 overflow-hidden z-[100] animate-fade-in"
+                >
                 <Link
                   to="/about-us"
                   className="block px-4 py-3 text-card-foreground hover:bg-muted transition-colors border-b border-border"
@@ -264,6 +261,7 @@ const Header = ({ onMenuStateChange }: HeaderProps) => {
                   <div className="text-sm text-muted-foreground">{t('dropdown.blockchainDesc')}</div>
                 </Link>
               </div>
+              )}
             </div>
             <Link 
               to="/contact" 
