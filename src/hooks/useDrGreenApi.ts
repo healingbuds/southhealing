@@ -98,6 +98,29 @@ export function useDrGreenApi() {
     }>('get-order', { orderId });
   };
 
+  // Update order status (after payment confirmation)
+  const updateOrder = async (orderId: string, data: {
+    status?: string;
+    paymentStatus?: string;
+  }) => {
+    return callProxy<{
+      orderId: string;
+      status: string;
+      paymentStatus: string;
+    }>('update-order', { orderId, data });
+  };
+
+  // Get user's orders
+  const getOrders = async (clientId: string) => {
+    return callProxy<Array<{
+      orderId: string;
+      status: string;
+      totalAmount: number;
+      createdAt: string;
+      paymentStatus: string;
+    }>>('get-orders', { clientId });
+  };
+
   // Get strains by country
   const getStrains = async (countryCode: string) => {
     const alpha3Code = countryCodeMap[countryCode] || countryCode;
@@ -118,6 +141,8 @@ export function useDrGreenApi() {
     createPayment,
     getPayment,
     getOrder,
+    updateOrder,
+    getOrders,
     getStrains,
     callProxy,
   };

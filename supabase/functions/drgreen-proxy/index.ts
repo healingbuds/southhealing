@@ -141,6 +141,11 @@ serve(async (req) => {
         break;
       }
       
+      case "update-order": {
+        response = await drGreenRequest(`/orders/${body.orderId}`, "PATCH", body.data);
+        break;
+      }
+      
       case "get-orders": {
         response = await drGreenRequest(`/orders?clientId=${body.clientId}`, "GET");
         break;
