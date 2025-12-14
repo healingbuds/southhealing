@@ -104,6 +104,14 @@ const mockProducts: Product[] = [
   },
 ];
 
+// Map Alpha-2 to Alpha-3 country codes for Dr Green API
+const countryCodeMap: Record<string, string> = {
+  PT: 'PRT',
+  ZA: 'ZAF',
+  TH: 'THA',
+  GB: 'GBR',
+};
+
 export function useProducts(countryCode: string = 'PT') {
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -113,12 +121,15 @@ export function useProducts(countryCode: string = 'PT') {
     setIsLoading(true);
     setError(null);
 
+    // Convert to Alpha-3 for API
+    const alpha3Code = countryCodeMap[countryCode] || 'PRT';
+
     try {
       // Try to fetch from Dr Green API via edge function
       const { data, error: fnError } = await supabase.functions.invoke('drgreen-proxy', {
         body: {
           action: 'get-strains',
-          countryCode,
+          countryCode: alpha3Code,
         },
       });
 

@@ -6,7 +6,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const DRGREEN_API_URL = "https://api.drgreen.io/v1";
+const DRGREEN_API_URL = "https://api.drgreennft.com/api/v1";
 
 // Sign payload using the private key (simplified for now)
 async function signPayload(payload: string, privateKey: string): Promise<string> {
