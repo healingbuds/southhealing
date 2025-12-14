@@ -136,25 +136,27 @@ export function useProducts(countryCode: string = 'PT') {
       if (fnError) {
         console.warn('Dr Green API unavailable, using mock data:', fnError);
         setProducts(mockProducts);
-      } else if (data?.strains) {
+      } else if (data?.success && data?.data?.strains?.length > 0) {
         // Transform API response to our Product interface
-        const transformedProducts: Product[] = data.strains.map((strain: any) => ({
-          id: strain.id,
+        // API returns: { success, statusCode, data: { strains: [...] } }
+        const transformedProducts: Product[] = data.data.strains.map((strain: any) => ({
+          id: strain.id || strain._id,
           name: strain.name,
           description: strain.description || '',
-          thcContent: strain.thcContent || 0,
-          cbdContent: strain.cbdContent || 0,
-          retailPrice: strain.retailPrice || 0,
-          availability: strain.availability ?? true,
-          stock: strain.stock || 0,
-          imageUrl: strain.imageUrl || '/placeholder.svg',
+          thcContent: strain.thcContent || strain.thc || 0,
+          cbdContent: strain.cbdContent || strain.cbd || 0,
+          retailPrice: strain.retailPrice || strain.price || 0,
+          availability: strain.availability ?? strain.inStock ?? true,
+          stock: strain.stock || strain.quantity || 0,
+          imageUrl: strain.imageUrl || strain.image || '/placeholder.svg',
           effects: strain.effects || [],
           terpenes: strain.terpenes || [],
-          category: strain.category || 'Hybrid',
+          category: strain.category || strain.type || 'Hybrid',
         }));
         setProducts(transformedProducts);
       } else {
-        // Use mock data if no strains returned
+        // Use mock data if no strains returned from API
+        console.log('No strains from API, using mock data');
         setProducts(mockProducts);
       }
     } catch (err) {
