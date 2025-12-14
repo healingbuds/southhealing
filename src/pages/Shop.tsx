@@ -89,28 +89,6 @@ export default function Shop() {
                 {t('subtitle')}
               </p>
 
-              {/* Country selector */}
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4 mb-6 sm:mb-8">
-                <span className="text-xs sm:text-sm text-muted-foreground">
-                  Showing products for:
-                </span>
-                <Select value={countryCode} onValueChange={setCountryCode}>
-                  <SelectTrigger className="w-[160px] sm:w-[180px] bg-background/50 backdrop-blur-sm text-sm">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {countries.map((country) => (
-                      <SelectItem key={country.code} value={country.code}>
-                        <span className="flex items-center gap-2">
-                          <span>{country.flag}</span>
-                          <span>{country.name}</span>
-                        </span>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
               {/* Eligibility status */}
               {drGreenClient && (
                 <motion.div
