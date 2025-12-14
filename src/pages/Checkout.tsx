@@ -11,47 +11,105 @@ import { useShop } from '@/context/ShopContext';
 import { EligibilityGate } from '@/components/shop/EligibilityGate';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '@/hooks/use-toast';
+import { useDrGreenApi } from '@/hooks/useDrGreenApi';
 
 const Checkout = () => {
   const { cart, cartTotal, clearCart, drGreenClient } = useShop();
   const navigate = useNavigate();
   const { t } = useTranslation('shop');
   const { toast } = useToast();
+  const { createOrder, createPayment, getPayment } = useDrGreenApi();
   const [isProcessing, setIsProcessing] = useState(false);
   const [orderComplete, setOrderComplete] = useState(false);
   const [orderId, setOrderId] = useState<string | null>(null);
+  const [paymentStatus, setPaymentStatus] = useState<string>('');
 
   const handlePlaceOrder = async () => {
     if (!drGreenClient || cart.length === 0) return;
 
     setIsProcessing(true);
+    setPaymentStatus('Creating order...');
 
     try {
-      // In a real implementation, this would:
-      // 1. Create an order via Dr Green API (POST /api/drgreen/dapp/orders)
-      // 2. Create payment via Dr Green API (POST /api/drgreen/dapp/payments)
-      // 3. Track payment status via Dr Green API (GET /api/drgreen/dapp/payments/:paymentId)
+      // Step 1: Create order via Dr Green API
+      const orderItems = cart.map((item) => ({
+        strainId: item.strain_id,
+        quantity: item.quantity,
+        unitPrice: item.unit_price,
+      }));
+
+      const orderResult = await createOrder({
+        clientId: drGreenClient.drgreen_client_id,
+        items: orderItems,
+      });
+
+      if (orderResult.error || !orderResult.data) {
+        throw new Error(orderResult.error || 'Failed to create order');
+      }
+
+      const createdOrderId = orderResult.data.orderId;
+      setPaymentStatus('Initiating payment...');
+
+      // Step 2: Create payment via Dr Green API
+      const paymentResult = await createPayment({
+        orderId: createdOrderId,
+        amount: cartTotal,
+        currency: 'EUR',
+        clientId: drGreenClient.drgreen_client_id,
+      });
+
+      if (paymentResult.error || !paymentResult.data) {
+        throw new Error(paymentResult.error || 'Failed to initiate payment');
+      }
+
+      const paymentId = paymentResult.data.paymentId;
+      setPaymentStatus('Processing payment...');
+
+      // Step 3: Poll for payment status (simplified - in production would use webhooks)
+      let attempts = 0;
+      const maxAttempts = 10;
       
-      // Simulating order creation for now
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      const mockOrderId = `ORD-${Date.now()}`;
-      setOrderId(mockOrderId);
+      while (attempts < maxAttempts) {
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+        
+        const statusResult = await getPayment(paymentId);
+        
+        if (statusResult.data?.status === 'PAID') {
+          setOrderId(createdOrderId);
+          setOrderComplete(true);
+          clearCart();
+          
+          toast({
+            title: 'Order Placed Successfully',
+            description: `Your order ${createdOrderId} has been confirmed.`,
+          });
+          return;
+        } else if (statusResult.data?.status === 'FAILED' || statusResult.data?.status === 'CANCELLED') {
+          throw new Error('Payment was not successful');
+        }
+        
+        attempts++;
+      }
+
+      // If we exit the loop without confirmation, treat as pending
+      setOrderId(createdOrderId);
       setOrderComplete(true);
       clearCart();
       
       toast({
-        title: "Order Placed Successfully",
-        description: `Your order ${mockOrderId} has been submitted.`,
+        title: 'Order Submitted',
+        description: `Your order ${createdOrderId} is being processed. You will receive confirmation shortly.`,
       });
     } catch (error) {
+      console.error('Checkout error:', error);
       toast({
-        title: "Order Failed",
-        description: "There was an error processing your order. Please try again.",
-        variant: "destructive",
+        title: 'Order Failed',
+        description: error instanceof Error ? error.message : 'There was an error processing your order. Please try again.',
+        variant: 'destructive',
       });
     } finally {
       setIsProcessing(false);
+      setPaymentStatus('');
     }
   };
 
@@ -223,7 +281,7 @@ const Checkout = () => {
                         {isProcessing ? (
                           <>
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Processing...
+                            {paymentStatus || 'Processing...'}
                           </>
                         ) : (
                           <>
