@@ -83,7 +83,12 @@ const EligibilityDialog = ({ open, onOpenChange }: EligibilityDialogProps) => {
   // Step 2 form
   const step2Form = useForm<Step2Data>({
     resolver: zodResolver(step2Schema),
-    defaultValues: formData as Step2Data,
+    defaultValues: {
+      conditions: [],
+      otherCondition: '',
+      symptoms: '',
+      ...(formData as Step2Data),
+    },
   });
 
   // Step 3 form
@@ -95,7 +100,11 @@ const EligibilityDialog = ({ open, onOpenChange }: EligibilityDialogProps) => {
   // Step 4 form
   const step4Form = useForm<Step4Data>({
     resolver: zodResolver(step4Schema),
-    defaultValues: formData as Step4Data,
+    defaultValues: {
+      consent: false,
+      privacyAcknowledgment: false,
+      ...(formData as Step4Data),
+    },
   });
 
   const handleStep1Submit = (data: Step1Data) => {
