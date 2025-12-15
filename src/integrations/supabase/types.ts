@@ -254,6 +254,75 @@ export type Database = {
         }
         Relationships: []
       }
+      strains: {
+        Row: {
+          availability: boolean
+          brand_name: string | null
+          cbd_content: number
+          cbg_content: number
+          client_url: string | null
+          created_at: string
+          description: string | null
+          feelings: string[] | null
+          flavors: string[] | null
+          helps_with: string[] | null
+          id: string
+          image_url: string | null
+          is_archived: boolean
+          name: string
+          retail_price: number
+          sku: string
+          stock: number
+          thc_content: number
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          availability?: boolean
+          brand_name?: string | null
+          cbd_content?: number
+          cbg_content?: number
+          client_url?: string | null
+          created_at?: string
+          description?: string | null
+          feelings?: string[] | null
+          flavors?: string[] | null
+          helps_with?: string[] | null
+          id?: string
+          image_url?: string | null
+          is_archived?: boolean
+          name: string
+          retail_price?: number
+          sku: string
+          stock?: number
+          thc_content?: number
+          type?: string
+          updated_at?: string
+        }
+        Update: {
+          availability?: boolean
+          brand_name?: string | null
+          cbd_content?: number
+          cbg_content?: number
+          client_url?: string | null
+          created_at?: string
+          description?: string | null
+          feelings?: string[] | null
+          flavors?: string[] | null
+          helps_with?: string[] | null
+          id?: string
+          image_url?: string | null
+          is_archived?: boolean
+          name?: string
+          retail_price?: number
+          sku?: string
+          stock?: number
+          thc_content?: number
+          type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
