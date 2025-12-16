@@ -34,6 +34,7 @@ const NotFound = lazy(() => import("./pages/NotFound"));
 const Auth = lazy(() => import("./pages/Auth"));
 const Shop = lazy(() => import("./pages/Shop"));
 const ShopRegister = lazy(() => import("./pages/ShopRegister"));
+const CultivarDetail = lazy(() => import("./pages/CultivarDetail"));
 const Checkout = lazy(() => import("./pages/Checkout"));
 const Orders = lazy(() => import("./pages/Orders"));
 const PatientDashboard = lazy(() => import("./pages/PatientDashboard"));
@@ -58,6 +59,7 @@ const AnimatedRoutes = () => {
           <Route path="/admin/strains" element={<AdminStrains />} />
           <Route path="/shop" element={<Shop />} />
           <Route path="/shop/register" element={<ShopRegister />} />
+          <Route path="/shop/cultivar/:cultivarId" element={<CultivarDetail />} />
           <Route path="/checkout" element={<Checkout />} />
           <Route path="/orders" element={<Orders />} />
           <Route path="/what-we-do" element={<WhatWeDo />} />
