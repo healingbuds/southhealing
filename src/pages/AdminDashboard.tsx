@@ -11,7 +11,14 @@ import {
   XCircle,
   ArrowRight,
   TrendingUp,
-  Package
+  Package,
+  Settings,
+  Shield,
+  Mail,
+  User,
+  ToggleLeft,
+  ToggleRight,
+  Loader2
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import Header from "@/components/Header";
@@ -19,6 +26,9 @@ import Footer from "@/components/Footer";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
 
 interface DashboardStats {
   pendingPrescriptions: number;
@@ -33,11 +43,21 @@ interface DashboardStats {
   verifiedClients: number;
 }
 
+interface AdminUser {
+  email: string;
+  fullName: string | null;
+  createdAt: string;
+}
+
 const AdminDashboard = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [adminUser, setAdminUser] = useState<AdminUser | null>(null);
+  const [demoKycEnabled, setDemoKycEnabled] = useState(false);
+  const [togglingKyc, setTogglingKyc] = useState(false);
 
   useEffect(() => {
     checkAdminStatus();
@@ -62,6 +82,30 @@ const AdminDashboard = () => {
         setIsAdmin(false);
         setLoading(false);
         return;
+      }
+
+      // Get admin user details
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      setAdminUser({
+        email: user.email || '',
+        fullName: profile?.full_name || null,
+        createdAt: user.created_at,
+      });
+
+      // Check current KYC demo status
+      const { data: clientData } = await supabase
+        .from('drgreen_clients')
+        .select('is_kyc_verified, admin_approval')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (clientData) {
+        setDemoKycEnabled(clientData.is_kyc_verified && clientData.admin_approval === 'VERIFIED');
       }
 
       setIsAdmin(true);
@@ -124,6 +168,67 @@ const AdminDashboard = () => {
       console.error('Error fetching stats:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleToggleDemoKyc = async () => {
+    setTogglingKyc(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const newStatus = !demoKycEnabled;
+
+      // Check if user has a drgreen_clients record
+      const { data: existingClient } = await supabase
+        .from('drgreen_clients')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (existingClient) {
+        // Update existing record
+        const { error } = await supabase
+          .from('drgreen_clients')
+          .update({
+            is_kyc_verified: newStatus,
+            admin_approval: newStatus ? 'VERIFIED' : 'PENDING',
+            updated_at: new Date().toISOString(),
+          })
+          .eq('user_id', user.id);
+
+        if (error) throw error;
+      } else {
+        // Create new record for demo
+        const { error } = await supabase
+          .from('drgreen_clients')
+          .insert({
+            user_id: user.id,
+            drgreen_client_id: `demo-${user.id}`,
+            country_code: 'PT',
+            is_kyc_verified: newStatus,
+            admin_approval: newStatus ? 'VERIFIED' : 'PENDING',
+          });
+
+        if (error) throw error;
+      }
+
+      setDemoKycEnabled(newStatus);
+      toast({
+        title: newStatus ? "Demo KYC Enabled" : "Demo KYC Disabled",
+        description: newStatus 
+          ? "You can now access all shop features without KYC verification." 
+          : "KYC verification is now required for shop access.",
+      });
+    } catch (error) {
+      console.error('Error toggling demo KYC:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update KYC status.",
+        variant: "destructive",
+      });
+    } finally {
+      setTogglingKyc(false);
     }
   };
 
@@ -268,6 +373,100 @@ const AdminDashboard = () => {
             <p className="text-muted-foreground mb-8">
               Overview of system statistics and quick access to admin tools
             </p>
+
+            {/* Admin Account Info & Demo Settings */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-12">
+              {/* Admin Account Info */}
+              <Card className="border-primary/20">
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-primary/10">
+                      <Shield className="w-5 h-5 text-primary" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-lg">Admin Account</CardTitle>
+                      <CardDescription>Your administrator credentials</CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                    <Mail className="w-4 h-4 text-muted-foreground" />
+                    <div>
+                      <p className="text-xs text-muted-foreground">Email</p>
+                      <p className="font-medium text-foreground">{adminUser?.email}</p>
+                    </div>
+                  </div>
+                  {adminUser?.fullName && (
+                    <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                      <User className="w-4 h-4 text-muted-foreground" />
+                      <div>
+                        <p className="text-xs text-muted-foreground">Name</p>
+                        <p className="font-medium text-foreground">{adminUser.fullName}</p>
+                      </div>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                    <Clock className="w-4 h-4 text-muted-foreground" />
+                    <div>
+                      <p className="text-xs text-muted-foreground">Account Created</p>
+                      <p className="font-medium text-foreground">
+                        {adminUser?.createdAt ? new Date(adminUser.createdAt).toLocaleDateString() : 'N/A'}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Demo Settings */}
+              <Card className="border-amber-500/20 bg-gradient-to-br from-amber-500/5 to-transparent">
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-amber-500/10">
+                      <Settings className="w-5 h-5 text-amber-500" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-lg">Demo Settings</CardTitle>
+                      <CardDescription>Toggle KYC bypass for testing</CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="p-4 rounded-lg border border-amber-500/20 bg-amber-500/5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        {demoKycEnabled ? (
+                          <ToggleRight className="w-5 h-5 text-green-500" />
+                        ) : (
+                          <ToggleLeft className="w-5 h-5 text-muted-foreground" />
+                        )}
+                        <div>
+                          <Label htmlFor="demo-kyc" className="font-medium cursor-pointer">
+                            Bypass KYC Verification
+                          </Label>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            Enable to access shop without completing KYC
+                          </p>
+                        </div>
+                      </div>
+                      {togglingKyc ? (
+                        <Loader2 className="w-5 h-5 animate-spin text-primary" />
+                      ) : (
+                        <Switch
+                          id="demo-kyc"
+                          checked={demoKycEnabled}
+                          onCheckedChange={handleToggleDemoKyc}
+                        />
+                      )}
+                    </div>
+                  </div>
+                  <div className="text-xs text-muted-foreground bg-muted/50 p-3 rounded-lg">
+                    <p className="font-medium text-foreground mb-1">⚠️ Demo Mode Only</p>
+                    <p>This setting bypasses KYC for your admin account only. Use for testing the full shop experience without completing actual verification.</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
 
             {/* Stats Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-12">
