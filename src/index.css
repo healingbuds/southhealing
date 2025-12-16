@@ -132,36 +132,46 @@ All colors MUST be HSL.
   }
 
   .dark {
-    /* Refined dark theme with better green contrast */
-    --background: 160 25% 6%;             /* Deep, rich dark with slight green tint */
-    --foreground: 150 10% 95%;
+    /* MEDICAL DARK THEME - Calm, neutral, trustworthy */
+    /* Base: neutral charcoal, no green tint */
+    --background: 200 8% 7%;              /* Neutral near-black charcoal */
+    --foreground: 210 15% 93%;            /* Soft off-white for text */
 
-    --card: 160 20% 10%;                  /* Slightly lighter cards */
-    --card-foreground: 150 10% 95%;
+    /* Cards: subtle lift from background */
+    --card: 200 6% 11%;                   /* Neutral dark gray */
+    --card-foreground: 210 15% 93%;
 
-    --popover: 160 20% 10%;
-    --popover-foreground: 150 10% 95%;
+    --popover: 200 6% 12%;
+    --popover-foreground: 210 15% 93%;
 
-    /* Primary green - vibrant but not overwhelming */
-    --primary: 152 55% 50%;               /* Fresh, balanced green */
-    --primary-foreground: 160 25% 6%;
+    /* Primary green - softened, medical-grade */
+    --primary: 155 38% 45%;               /* Desaturated, calm green */
+    --primary-foreground: 0 0% 100%;
 
-    /* Secondary - warm gold accent for contrast */
-    --secondary: 42 85% 55%;
-    --secondary-foreground: 160 25% 6%;
+    /* Secondary - muted warm tone for balance */
+    --secondary: 200 6% 18%;              /* Neutral secondary surface */
+    --secondary-foreground: 210 15% 90%;
 
-    --muted: 160 15% 15%;
-    --muted-foreground: 150 10% 55%;
+    /* Muted surfaces */
+    --muted: 200 5% 14%;
+    --muted-foreground: 210 10% 55%;
 
-    --accent: 152 40% 18%;
-    --accent-foreground: 152 55% 60%;
+    /* Accent - subtle green for highlights only */
+    --accent: 155 25% 16%;
+    --accent-foreground: 155 35% 70%;
 
-    --destructive: 0 65% 45%;
+    --destructive: 0 55% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 160 15% 18%;
-    --input: 160 15% 15%;
-    --ring: 152 55% 50%;
+    /* Borders and inputs - neutral */
+    --border: 200 6% 20%;
+    --input: 200 5% 14%;
+    --ring: 155 38% 45%;
+    
+    /* Status colors for medical UX */
+    --success: 155 38% 45%;               /* Same as primary - verified states */
+    --warning: 38 75% 55%;                /* Warm amber for attention */
+    --info: 200 60% 50%;                  /* Calm blue for info */
   }
 }
 
@@ -321,15 +331,28 @@ All colors MUST be HSL.
     @apply bg-background/50 backdrop-blur-sm border border-border/30 rounded-xl;
   }
   
-  /* Accent green glow effects */
+  /* Softened glow effects - medical restraint */
   .glow-accent {
     @apply shadow-lg;
-    box-shadow: 0 0 20px rgba(77, 191, 161, 0.3);
+    box-shadow: 0 0 12px rgba(77, 170, 140, 0.15);
   }
   
   .glow-accent-strong {
     @apply shadow-xl;
-    box-shadow: 0 0 30px rgba(77, 191, 161, 0.5);
+    box-shadow: 0 0 20px rgba(77, 170, 140, 0.25);
+  }
+  
+  /* Medical status indicators - green only for success */
+  .status-verified {
+    @apply text-primary bg-primary/10 border border-primary/20;
+  }
+  
+  .status-pending {
+    @apply text-muted-foreground bg-muted border border-border;
+  }
+  
+  .status-attention {
+    @apply text-amber-400 bg-amber-400/10 border border-amber-400/20;
   }
   
   /* Safe area for iOS devices */
@@ -452,18 +475,18 @@ All colors MUST be HSL.
   }
 }
 
-/* Pulsing glow animation for glass cards */
+/* Subtle pulse animation - medical restraint, no harsh glow */
 @keyframes pulse-glow {
   0%, 100% {
-    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37), 0 2px 8px 0 rgba(0, 0, 0, 0.1), 0 0 20px rgba(20, 184, 166, 0.3);
+    box-shadow: 0 4px 16px 0 rgba(0, 0, 0, 0.2), 0 1px 4px 0 rgba(0, 0, 0, 0.1);
   }
   50% {
-    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.5), 0 2px 8px 0 rgba(0, 0, 0, 0.15), 0 0 30px rgba(20, 184, 166, 0.5);
+    box-shadow: 0 6px 24px 0 rgba(0, 0, 0, 0.25), 0 2px 6px 0 rgba(0, 0, 0, 0.12);
   }
 }
 
 .animate-pulse-glow {
-  animation: pulse-glow 3s ease-in-out infinite;
+  animation: pulse-glow 4s ease-in-out infinite;
 }
 
 /* NProgress customization to match brand */
@@ -494,12 +517,12 @@ All colors MUST be HSL.
 }
 
 .dark #nprogress .bar {
-  background: linear-gradient(90deg, hsl(155 60% 45%), hsl(45 80% 50%));
-  box-shadow: 0 0 10px hsl(155 60% 45% / 0.5), 0 0 5px hsl(155 60% 45% / 0.3);
+  background: linear-gradient(90deg, hsl(155 38% 45%), hsl(200 50% 50%));
+  box-shadow: 0 0 6px hsl(155 38% 45% / 0.3);
 }
 
 .dark #nprogress .peg {
-  box-shadow: 0 0 10px hsl(155 60% 45%), 0 0 5px hsl(155 60% 45%);
+  box-shadow: 0 0 6px hsl(155 38% 45% / 0.4);
 }
 
 /* Shimmer animation for loading skeletons */

@@ -102,67 +102,41 @@ export default function Shop() {
               className="max-w-3xl mx-auto text-center"
             >
               <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-foreground mb-3 sm:mb-4">
-                <span className="text-primary">Cultivars</span>
+                Cultivars
               </h1>
               <p className="text-base sm:text-lg text-muted-foreground mb-6 sm:mb-8 px-2">
                 {t('subtitle')}
               </p>
 
-              {/* Eligibility status - Verified badge with glow */}
+              {/* Eligibility status - Verified badge with subtle indicator */}
               {drGreenClient && isEligible && (
                 <motion.div
-                  initial={{ opacity: 0, scale: 0.9, y: 10 }}
+                  initial={{ opacity: 0, scale: 0.95, y: 10 }}
                   animate={{ opacity: 1, scale: 1, y: 0 }}
-                  transition={{ type: "spring", stiffness: 200, damping: 20 }}
-                  className="relative inline-flex items-center gap-3 px-6 py-3.5 rounded-xl text-sm font-semibold"
+                  transition={{ type: "spring", stiffness: 200, damping: 25 }}
+                  className="inline-flex items-center gap-3 px-5 py-3 rounded-xl text-sm font-medium bg-primary/10 border border-primary/25 text-primary"
                 >
-                  {/* Outer glow pulse */}
-                  <motion.div
-                    className="absolute inset-0 rounded-xl bg-gradient-to-r from-primary via-primary/80 to-primary"
-                    animate={{
-                      boxShadow: [
-                        '0 0 20px 0px hsl(var(--primary) / 0.4)',
-                        '0 0 40px 8px hsl(var(--primary) / 0.6)',
-                        '0 0 20px 0px hsl(var(--primary) / 0.4)',
-                      ],
-                    }}
-                    transition={{ repeat: Infinity, duration: 2, ease: 'easeInOut' }}
-                  />
-                  {/* Inner content */}
-                  <div className="relative z-10 flex items-center gap-3 text-primary-foreground">
-                    <motion.div
-                      animate={{ 
-                        scale: [1, 1.2, 1],
-                        rotate: [0, 5, -5, 0],
-                      }}
-                      transition={{ repeat: Infinity, duration: 2.5, ease: 'easeInOut' }}
-                      className="p-1.5 rounded-lg bg-white/20 backdrop-blur-sm"
-                    >
-                      <ShieldCheck className="h-5 w-5" />
-                    </motion.div>
-                    <span className="tracking-wide uppercase text-xs font-bold">
-                      Verified Medical Patient
-                    </span>
+                  <div className="p-1.5 rounded-lg bg-primary/15">
+                    <ShieldCheck className="h-4 w-4" />
                   </div>
+                  <span className="tracking-wide text-xs font-semibold uppercase">
+                    Verified Medical Patient
+                  </span>
                 </motion.div>
               )}
 
               {/* Pending verification status */}
               {drGreenClient && !isEligible && (
                 <motion.div
-                  initial={{ opacity: 0, scale: 0.9, y: 10 }}
+                  initial={{ opacity: 0, scale: 0.95, y: 10 }}
                   animate={{ opacity: 1, scale: 1, y: 0 }}
-                  transition={{ type: "spring", stiffness: 200, damping: 20 }}
-                  className="inline-flex items-center gap-3 px-5 py-3 rounded-xl text-sm font-medium shadow-lg bg-gradient-to-r from-yellow-500/20 via-yellow-500/15 to-yellow-500/20 text-yellow-600 dark:text-yellow-500 border-2 border-yellow-500/40 shadow-yellow-500/20"
+                  transition={{ type: "spring", stiffness: 200, damping: 25 }}
+                  className="inline-flex items-center gap-3 px-5 py-3 rounded-xl text-sm font-medium bg-muted border border-border text-muted-foreground"
                 >
-                  <motion.div
-                    animate={{ rotate: [0, 360] }}
-                    transition={{ repeat: Infinity, duration: 8, ease: 'linear' }}
-                    className="p-1.5 rounded-lg bg-yellow-500/20"
-                  >
-                    <ShieldCheck className="h-5 w-5" />
-                  </motion.div>
-                  <span className="tracking-wide">Verification Pending</span>
+                  <div className="p-1.5 rounded-lg bg-muted-foreground/10">
+                    <ShieldCheck className="h-4 w-4" />
+                  </div>
+                  <span className="tracking-wide text-xs font-semibold">Verification Pending</span>
                 </motion.div>
               )}
 

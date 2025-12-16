@@ -63,21 +63,14 @@ export function VerificationProgress() {
               <div
                 className={`relative h-9 w-9 rounded-full flex items-center justify-center transition-all duration-300 ${
                   step.completed
-                    ? 'bg-primary text-primary-foreground shadow-md shadow-primary/30'
-                    : 'bg-muted text-muted-foreground'
+                    ? 'bg-primary/15 text-primary border border-primary/30'
+                    : 'bg-muted text-muted-foreground border border-border'
                 }`}
               >
                 {step.completed ? (
                   <CheckCircle2 className="h-4 w-4" />
                 ) : (
                   <step.icon className="h-4 w-4" />
-                )}
-                {step.completed && (
-                  <motion.div
-                    className="absolute inset-0 rounded-full bg-primary/30"
-                    animate={{ scale: [1, 1.3, 1], opacity: [0.5, 0, 0.5] }}
-                    transition={{ repeat: Infinity, duration: 2 }}
-                  />
                 )}
               </div>
               <span
@@ -99,11 +92,11 @@ export function VerificationProgress() {
             className="text-xs text-muted-foreground text-center mt-3 pt-3 border-t border-border/50"
           >
             {!drGreenClient.is_kyc_verified
-              ? 'Complete KYC verification to continue'
+              ? 'Please complete KYC verification to proceed'
               : drGreenClient.admin_approval === 'PENDING'
-              ? 'Awaiting medical team review (1-2 business days)'
+              ? 'Your application is under medical review (1-2 business days)'
               : drGreenClient.admin_approval === 'REJECTED'
-              ? 'Application requires additional information'
+              ? 'Additional information required — please contact support'
               : 'Processing your verification...'}
           </motion.p>
         )}
