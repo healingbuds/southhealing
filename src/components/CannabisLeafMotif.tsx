@@ -4,6 +4,8 @@ import { cn } from "@/lib/utils";
 // Import the actual PNG motif images
 import plantMotif1 from "@/assets/plant-motif-1.png";
 import plantMotif2 from "@/assets/plant-motif-2.png";
+import plantMotif3 from "@/assets/plant-motif-3.png";
+import plantMotif4 from "@/assets/plant-motif-4.png";
 import plantDecoration1 from "@/assets/plant-decoration-1.png";
 import plantDecoration2 from "@/assets/plant-decoration-2.png";
 import plantDecoration3 from "@/assets/plant-decoration-3.png";
@@ -21,6 +23,8 @@ interface CannabisLeafMotifProps {
 const motifImages = [
   plantMotif1,
   plantMotif2,
+  plantMotif3,
+  plantMotif4,
   plantDecoration1,
   plantDecoration2,
   plantDecoration3,
