@@ -22,39 +22,54 @@ import { ClientOnboarding } from '@/components/shop/ClientOnboarding';
 import { useShop } from '@/context/ShopContext';
 import { cn } from '@/lib/utils';
 
-const eligibilityConditions = [
-  'Chronic pain conditions',
-  'Anxiety disorders',
-  'PTSD (Post-Traumatic Stress Disorder)',
-  'Multiple sclerosis',
-  'Epilepsy and seizure disorders',
-  'Neuropathic pain',
-  'Chemotherapy-induced nausea',
-  'Insomnia and sleep disorders',
-  'Inflammatory conditions',
-  'Other qualifying conditions (assessed case-by-case)'
+// Qualifying conditions organized by medical specialty
+const conditionCategories = [
+  {
+    specialty: 'Pain Management',
+    conditions: ['Chronic pain', 'Neuropathic pain', 'Fibromyalgia', 'Cancer-related pain', 'Arthritis']
+  },
+  {
+    specialty: 'Psychiatry',
+    conditions: ['PTSD', 'Anxiety disorders', 'Treatment-resistant depression', 'Insomnia', 'Stress disorders']
+  },
+  {
+    specialty: 'Neurology',
+    conditions: ['Epilepsy', 'Multiple sclerosis', 'Parkinson\'s disease', 'Migraine disorders', 'Neuropathy']
+  },
+  {
+    specialty: 'Gastroenterology',
+    conditions: ['Crohn\'s disease', 'Ulcerative colitis', 'Irritable bowel syndrome', 'Chemotherapy-induced nausea']
+  },
+  {
+    specialty: 'Palliative & Supportive Care',
+    conditions: ['Appetite stimulation', 'Cachexia', 'End-of-life symptom management', 'Quality of life improvement']
+  }
 ];
 
 const processSteps = [
   {
     icon: FileCheck,
-    title: 'Complete Assessment',
-    description: 'Fill out our medical questionnaire with your health information and qualifying conditions.'
+    title: 'Quick Eligibility Check',
+    description: 'Complete a short questionnaire to check if you qualify. Takes less than 5 minutes.',
+    highlight: 'Free Assessment'
+  },
+  {
+    icon: Stethoscope,
+    title: 'Medical Consultation',
+    description: 'Speak with a licensed medical professional who will design your personalized treatment plan.',
+    highlight: '98% Approval Rate'
   },
   {
     icon: Shield,
     title: 'Identity Verification',
-    description: 'Complete secure KYC verification to confirm your identity and age.'
-  },
-  {
-    icon: Stethoscope,
-    title: 'Medical Review',
-    description: 'Our medical team reviews your application to ensure eligibility.'
+    description: 'Complete secure KYC verification with a valid government ID linked to your home address.',
+    highlight: 'Regulatory Compliance'
   },
   {
     icon: CheckCircle2,
-    title: 'Access Granted',
-    description: 'Once approved, gain full access to browse and purchase medical cannabis products.'
+    title: 'Secure Access',
+    description: 'Once verified, gain access to our secure patient portal with nationwide delivery.',
+    highlight: 'Discreet Delivery'
   }
 ];
 
@@ -172,11 +187,11 @@ const Eligibility = () => {
             </section>
           )}
 
-          {/* Qualifying Conditions */}
+          {/* Qualifying Conditions by Specialty */}
           {!showQuestionnaire && (
             <section className="py-16 bg-muted/30">
               <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="max-w-4xl mx-auto">
+                <div className="max-w-5xl mx-auto">
                   <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     whileInView={{ opacity: 1, y: 0 }}
@@ -187,26 +202,43 @@ const Eligibility = () => {
                       Qualifying Conditions
                     </h2>
                     <p className="font-body text-muted-foreground max-w-2xl mx-auto">
-                      Medical cannabis may be prescribed for various conditions. 
-                      The following are commonly approved qualifying conditions:
+                      Medical cannabis may be prescribed for conditions across multiple medical specialties. 
+                      Our licensed professionals evaluate each case individually.
                     </p>
                   </motion.div>
 
-                  <div className="grid sm:grid-cols-2 gap-4">
-                    {eligibilityConditions.map((condition, index) => (
+                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {conditionCategories.map((category, categoryIndex) => (
                       <motion.div
-                        key={condition}
-                        initial={{ opacity: 0, x: -20 }}
-                        whileInView={{ opacity: 1, x: 0 }}
+                        key={category.specialty}
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true }}
-                        transition={{ delay: index * 0.05 }}
-                        className="flex items-center gap-3 p-4 rounded-xl bg-card border border-border/50"
+                        transition={{ delay: categoryIndex * 0.1 }}
                       >
-                        <CheckCircle2 className="w-5 h-5 text-primary flex-shrink-0" />
-                        <span className="font-body text-foreground">{condition}</span>
+                        <Card className="h-full bg-card border-border/50">
+                          <CardHeader className="pb-3">
+                            <CardTitle className="text-lg text-primary">{category.specialty}</CardTitle>
+                          </CardHeader>
+                          <CardContent className="pt-0">
+                            <ul className="space-y-2">
+                              {category.conditions.map((condition) => (
+                                <li key={condition} className="flex items-start gap-2 text-sm text-muted-foreground">
+                                  <CheckCircle2 className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
+                                  <span>{condition}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </CardContent>
+                        </Card>
                       </motion.div>
                     ))}
                   </div>
+                  
+                  <p className="text-center text-sm text-muted-foreground mt-8">
+                    Don't see your condition listed? Our medical team evaluates each case individually. 
+                    Start your assessment to discuss your specific situation.
+                  </p>
                 </div>
               </div>
             </section>
@@ -247,6 +279,11 @@ const Eligibility = () => {
                             </div>
                             <div className="flex items-center gap-3 mb-2">
                               <span className="text-sm font-medium text-primary">Step {index + 1}</span>
+                              {step.highlight && (
+                                <span className="text-xs px-2 py-0.5 rounded-full bg-highlight/10 text-highlight font-medium">
+                                  {step.highlight}
+                                </span>
+                              )}
                             </div>
                             <CardTitle className="text-lg">{step.title}</CardTitle>
                           </CardHeader>

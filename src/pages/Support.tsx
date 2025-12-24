@@ -34,30 +34,42 @@ const faqCategories = [
     questions: [
       {
         question: 'Who is eligible for medical cannabis?',
-        answer: 'Medical cannabis is available for patients with qualifying medical conditions including chronic pain, anxiety, PTSD, epilepsy, multiple sclerosis, and other conditions. You must complete our medical assessment and verification process to determine eligibility.'
+        answer: 'Medical cannabis is available for patients with qualifying conditions across multiple medical specialties including pain management (chronic pain, neuropathy, fibromyalgia), psychiatry (PTSD, anxiety, insomnia), neurology (epilepsy, MS, Parkinson\'s), gastroenterology (Crohn\'s, IBS), and palliative care. Our medical team evaluates each case individually.'
       },
       {
         question: 'How do I start the eligibility process?',
-        answer: 'Visit our Eligibility page and complete the medical questionnaire. This includes providing your personal information, medical history, and current conditions. After submission, you will need to complete identity verification (KYC) before your application is reviewed.'
+        answer: 'Complete our quick eligibility questionnaire (under 5 minutes) with your basic health information. If eligible, you\'ll be connected with a licensed medical professional for a consultation to discuss your treatment options and design a personalized plan.'
+      },
+      {
+        question: 'What is the approval rate?',
+        answer: 'We have a 98% approval rate for patients who complete the eligibility process. Our licensed medical professionals work with you to understand your condition and determine if medical cannabis is appropriate for your treatment.'
       },
       {
         question: 'How long does the verification process take?',
-        answer: 'Identity verification (KYC) is typically completed within 24-48 hours. Medical review by our team usually takes 2-5 business days. You will receive email notifications at each stage of the process.'
+        answer: 'Identity verification (KYC) is typically completed within 24-48 hours. Medical review and consultation usually takes 2-5 business days. You will receive email notifications at each stage of the process.'
       },
       {
         question: 'What documents do I need for verification?',
-        answer: 'You will need a valid government-issued ID (passport, driver\'s license, or national ID card) for identity verification. Medical documentation supporting your condition may be requested during the review process.'
+        answer: 'You will need a valid government-issued ID (passport, driver\'s license, or national ID card) linked to your home address for identity verification. This ensures compliance with local regulations and secure delivery.'
       }
     ]
   },
   {
     id: 'products',
-    title: 'Products & Ordering',
+    title: 'Products & Quality',
     icon: Package,
     questions: [
       {
         question: 'What products are available?',
-        answer: 'We offer a range of pharmaceutical-grade medical cannabis products including dried flower, oils, and other formulations. Product availability varies by country and is subject to local regulations. All products are lab-tested and EU GMP certified.'
+        answer: 'We offer pharmaceutical-grade medical cannabis products including dried flower, oils, and other formulations. All products are produced in EU GMP certified facilities with full quality control. Product availability varies by country and is subject to local regulations.'
+      },
+      {
+        question: 'What quality standards do your products meet?',
+        answer: 'All products are EU GMP (Good Manufacturing Practice) certified and produced in state-of-the-art pharmaceutical facilities. Every batch undergoes rigorous third-party lab testing for potency, purity, and contaminants. We maintain full seed-to-sale traceability using blockchain technology.'
+      },
+      {
+        question: 'How is product packaging handled?',
+        answer: 'All products are packaged to pharmaceutical standards with child-resistant, UV-resistant, and tamper-evident containers. Each package includes a QR code for complete traceability verification, allowing you to view the full journey from cultivation to delivery.'
       },
       {
         question: 'How do I place an order?',
@@ -65,11 +77,7 @@ const faqCategories = [
       },
       {
         question: 'Can I order if I am not verified?',
-        answer: 'No. For compliance and safety reasons, only verified patients can access the shop and place orders. This ensures that medical cannabis is only provided to eligible patients under proper medical supervision.'
-      },
-      {
-        question: 'What are the product prices?',
-        answer: 'Prices vary by product type, strain, and quantity. All prices are displayed in your local currency and include applicable taxes. Current pricing is visible on product pages once you are logged in.'
+        answer: 'No. For compliance and safety reasons, only verified patients can access the shop and place orders. This ensures that medical cannabis is only provided to eligible patients under proper medical supervision as required by law.'
       }
     ]
   },
@@ -84,7 +92,7 @@ const faqCategories = [
       },
       {
         question: 'What is KYC verification?',
-        answer: 'KYC (Know Your Customer) is a secure identity verification process required for all patients. It confirms your identity and age, ensuring compliance with medical cannabis regulations. The process is secure and your data is protected.'
+        answer: 'KYC (Know Your Customer) is a secure identity verification process required for all patients. It confirms your identity and age using a valid ID linked to your home address, ensuring compliance with medical cannabis regulations. The process is secure and your data is protected.'
       },
       {
         question: 'How do I check my verification status?',
@@ -92,7 +100,7 @@ const faqCategories = [
       },
       {
         question: 'My verification was rejected. What do I do?',
-        answer: 'If your verification was rejected, you will receive an email explaining the reason. Common issues include unclear ID photos or missing information. You can resubmit your verification or contact our support team for assistance.'
+        answer: 'If your verification was rejected, you will receive an email explaining the reason. Common issues include unclear ID photos, ID not matching your registered address, or missing information. You can resubmit your verification or contact our support team for assistance.'
       }
     ]
   },
@@ -103,7 +111,7 @@ const faqCategories = [
     questions: [
       {
         question: 'Where do you deliver?',
-        answer: 'We currently deliver to Portugal, South Africa, Thailand, and the United Kingdom. Delivery is only available within countries where we are licensed to operate. Shipping addresses must match your verified account details.'
+        answer: 'We currently deliver nationwide within Portugal, South Africa, Thailand, and the United Kingdom. Delivery is only available within countries where we are licensed to operate. Shipping addresses must match your verified account details for security and compliance.'
       },
       {
         question: 'How long does delivery take?',
@@ -111,7 +119,7 @@ const faqCategories = [
       },
       {
         question: 'How is my order packaged?',
-        answer: 'All orders are shipped in discreet, secure packaging with no external branding that indicates the contents. Products are properly sealed to maintain quality and comply with shipping regulations.'
+        answer: 'All orders are shipped in discreet, secure packaging with no external branding that indicates the contents. Products are in child-resistant, UV-protected, tamper-evident containers and properly sealed to maintain quality and comply with shipping regulations.'
       },
       {
         question: 'Can I track my order?',
@@ -126,19 +134,19 @@ const faqCategories = [
     questions: [
       {
         question: 'Is medical cannabis legal?',
-        answer: 'Medical cannabis is legal for qualifying patients in the countries where we operate, subject to local regulations. Our products are only available to verified patients who have completed the eligibility process and received approval.'
+        answer: 'Medical cannabis is legal for qualifying patients in the countries where we operate, subject to local regulations. In South Africa, medical cannabis access is regulated by SAHPRA (South African Health Products Regulatory Authority). Our products and processes are fully compliant with all applicable regulations.'
       },
       {
         question: 'Do I need a prescription?',
-        answer: 'Requirements vary by country. Our medical assessment and verification process ensures you meet all local requirements for accessing medical cannabis. Our team will guide you through any prescription requirements.'
+        answer: 'Requirements vary by country. In South Africa, THC-containing products require a medical script issued by a licensed healthcare practitioner. Our consultation and verification process ensures you meet all local requirements for accessing medical cannabis legally.'
       },
       {
         question: 'How is my data protected?',
-        answer: 'We take data protection seriously. All personal and medical information is encrypted and stored securely in compliance with GDPR and local data protection regulations. We never share your information with third parties without your consent.'
+        answer: 'We take data protection seriously. All personal and medical information is encrypted and stored securely in compliance with GDPR, POPIA (in South Africa), and local data protection regulations. We never share your information with third parties without your explicit consent.'
       },
       {
-        question: 'What quality standards do your products meet?',
-        answer: 'All our products are EU GMP (Good Manufacturing Practice) certified and undergo rigorous third-party lab testing. We maintain full seed-to-sale traceability using blockchain technology to ensure product authenticity and quality.'
+        question: 'What regulatory bodies oversee your products?',
+        answer: 'Our products are produced under EU GMP standards in licensed pharmaceutical facilities. Depending on your location, oversight includes SAHPRA (South Africa), INFARMED (Portugal), Thai FDA (Thailand), and relevant UK authorities. All products maintain complete seed-to-sale traceability verified via blockchain.'
       }
     ]
   }

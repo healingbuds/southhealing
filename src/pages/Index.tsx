@@ -283,22 +283,44 @@ const Index = () => {
           {/* Medical Compliance Banner */}
           <section className="py-12 bg-primary/5 border-y border-primary/10">
             <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="max-w-4xl mx-auto">
-                <div className="flex flex-col md:flex-row items-center gap-6 text-center md:text-left">
-                  <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center flex-shrink-0">
-                    <Shield className="w-8 h-8 text-primary" />
+              <div className="max-w-5xl mx-auto">
+                <div className="grid md:grid-cols-2 gap-8">
+                  {/* EU GMP Standards */}
+                  <div className="flex items-start gap-4">
+                    <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      <Shield className="w-7 h-7 text-primary" />
+                    </div>
+                    <div>
+                      <h3 className="font-display text-lg font-semibold text-foreground mb-2">
+                        EU GMP Certified Production
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        All products are manufactured in state-of-the-art pharmaceutical facilities 
+                        under strict EU Good Manufacturing Practice standards with rigorous third-party lab testing.
+                      </p>
+                    </div>
                   </div>
-                  <div className="flex-1">
-                    <h3 className="font-display text-xl font-semibold text-foreground mb-2">
-                      Regulated Medical Products
-                    </h3>
-                    <p className="text-muted-foreground">
-                      All products are EU GMP certified with full seed-to-sale traceability. 
-                      Access is limited to verified patients with qualifying medical conditions.
-                    </p>
+                  
+                  {/* Traceability */}
+                  <div className="flex items-start gap-4">
+                    <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      <Stethoscope className="w-7 h-7 text-primary" />
+                    </div>
+                    <div>
+                      <h3 className="font-display text-lg font-semibold text-foreground mb-2">
+                        Complete Seed-to-Sale Traceability
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        Every product features QR code verification for blockchain-backed traceability. 
+                        Child-resistant, UV-protected, tamper-evident packaging meets pharmaceutical standards.
+                      </p>
+                    </div>
                   </div>
-                  <Button asChild variant="outline" className="flex-shrink-0">
-                    <Link to="/support">Learn More</Link>
+                </div>
+                
+                <div className="flex justify-center mt-8">
+                  <Button asChild variant="outline" size="sm">
+                    <Link to="/support">Learn More About Our Standards</Link>
                   </Button>
                 </div>
               </div>
