@@ -10,6 +10,7 @@ import MobileBottomActions from "@/components/MobileBottomActions";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { MapPin } from "lucide-react";
 import SEOHead from "@/components/SEOHead";
 import { getNewsArticlesByRegion } from "@/data/newsArticles";
 import { useGeoLocation } from "@/hooks/useGeoLocation";
@@ -27,6 +28,25 @@ const TheWire = () => {
   const featuredArticle = articles.find((a) => a.featured);
   const otherArticles = articles.filter((a) => !a.featured);
 
+  // Get region display name
+  const getRegionLabel = (code: string) => {
+    switch (code) {
+      case 'GB': return 'United Kingdom';
+      case 'PT': return 'Portugal';
+      case 'ZA': return 'South Africa';
+      default: return 'United Kingdom';
+    }
+  };
+
+  const getRegionFlag = (code: string) => {
+    switch (code) {
+      case 'GB': return '🇬🇧';
+      case 'PT': return '🇵🇹';
+      case 'ZA': return '🇿🇦';
+      default: return '🇬🇧';
+    }
+  };
+
   return (
     <PageTransition>
       <SEOHead 
@@ -42,6 +62,17 @@ const TheWire = () => {
           <section className="container mx-auto px-4 sm:px-6 lg:px-8 mb-12">
             <ScrollAnimation>
               <div className="text-center mb-12">
+                {/* Region Indicator Badge */}
+                <div className="flex justify-center mb-6">
+                  <Badge 
+                    variant="outline" 
+                    className="px-4 py-2 text-sm font-medium border-primary/30 bg-primary/5 text-foreground gap-2"
+                  >
+                    <MapPin className="w-4 h-4 text-primary" />
+                    <span className="text-lg mr-1">{getRegionFlag(locationConfig.countryCode)}</span>
+                    {getRegionLabel(locationConfig.countryCode)} News
+                  </Badge>
+                </div>
                 <h1 className="font-pharma text-4xl sm:text-5xl md:text-6xl font-bold text-foreground mb-4">
                   {t("hero.title")}
                 </h1>
