@@ -18,7 +18,9 @@ import {
   User,
   ToggleLeft,
   ToggleRight,
-  Loader2
+  Loader2,
+  DollarSign,
+  RefreshCw
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import Header from "@/layout/Header";
@@ -29,6 +31,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { useDrGreenApi } from "@/hooks/useDrGreenApi";
 
 interface DashboardStats {
   pendingPrescriptions: number;
@@ -41,6 +44,11 @@ interface DashboardStats {
   pendingOrders: number;
   totalClients: number;
   verifiedClients: number;
+  // Dr Green Dapp live stats
+  dappTotalClients?: number;
+  dappTotalOrders?: number;
+  dappTotalSales?: number;
+  dappPendingClients?: number;
 }
 
 interface AdminUser {
@@ -52,8 +60,10 @@ interface AdminUser {
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { getDashboardSummary, getSalesSummary } = useDrGreenApi();
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [adminUser, setAdminUser] = useState<AdminUser | null>(null);
   const [demoKycEnabled, setDemoKycEnabled] = useState(false);
@@ -116,9 +126,11 @@ const AdminDashboard = () => {
     }
   };
 
-  const fetchStats = async () => {
+  const fetchStats = async (showRefreshToast = false) => {
+    if (showRefreshToast) setRefreshing(true);
+    
     try {
-      // Fetch prescription stats
+      // Fetch prescription stats from Supabase
       const { data: prescriptions } = await supabase
         .from('prescription_documents')
         .select('status');
@@ -127,7 +139,7 @@ const AdminDashboard = () => {
       const approvedPrescriptions = prescriptions?.filter(p => p.status === 'approved').length || 0;
       const rejectedPrescriptions = prescriptions?.filter(p => p.status === 'rejected').length || 0;
 
-      // Fetch strain stats
+      // Fetch strain stats from Supabase
       const { data: strains } = await supabase
         .from('strains')
         .select('availability, is_archived');
@@ -136,7 +148,7 @@ const AdminDashboard = () => {
       const availableStrains = strains?.filter(s => s.availability && !s.is_archived).length || 0;
       const archivedStrains = strains?.filter(s => s.is_archived).length || 0;
 
-      // Fetch order stats
+      // Fetch order stats from Supabase
       const { data: orders } = await supabase
         .from('drgreen_orders')
         .select('status');
@@ -144,13 +156,35 @@ const AdminDashboard = () => {
       const totalOrders = orders?.length || 0;
       const pendingOrders = orders?.filter(o => o.status === 'PENDING').length || 0;
 
-      // Fetch client stats
+      // Fetch client stats from Supabase
       const { data: clients } = await supabase
         .from('drgreen_clients')
         .select('is_kyc_verified, admin_approval');
 
       const totalClients = clients?.length || 0;
       const verifiedClients = clients?.filter(c => c.is_kyc_verified && c.admin_approval === 'VERIFIED').length || 0;
+
+      // Fetch LIVE stats from Dr Green Dapp API
+      let dappTotalClients = 0;
+      let dappTotalOrders = 0;
+      let dappTotalSales = 0;
+      let dappPendingClients = 0;
+
+      try {
+        const { data: dappSummary, error: dappError } = await getDashboardSummary();
+        if (!dappError && dappSummary) {
+          dappTotalClients = dappSummary.totalClients || 0;
+          dappTotalOrders = dappSummary.totalOrders || 0;
+          dappPendingClients = dappSummary.pendingClients || 0;
+        }
+        
+        const { data: salesSummary, error: salesError } = await getSalesSummary();
+        if (!salesError && salesSummary) {
+          dappTotalSales = salesSummary.totalSales || 0;
+        }
+      } catch (dappErr) {
+        console.log('Dr Green Dapp API stats not available:', dappErr);
+      }
 
       setStats({
         pendingPrescriptions,
@@ -162,12 +196,24 @@ const AdminDashboard = () => {
         totalOrders,
         pendingOrders,
         totalClients,
-        verifiedClients
+        verifiedClients,
+        dappTotalClients,
+        dappTotalOrders,
+        dappTotalSales,
+        dappPendingClients,
       });
+
+      if (showRefreshToast) {
+        toast({
+          title: "Data Refreshed",
+          description: "Dashboard statistics updated from live API.",
+        });
+      }
     } catch (error) {
       console.error('Error fetching stats:', error);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
@@ -279,10 +325,44 @@ const AdminDashboard = () => {
   }
 
   const statCards = [
+    // Dr Green Dapp Live Stats (from API)
+    {
+      title: "Dapp Clients (Live)",
+      value: stats?.dappTotalClients || 0,
+      icon: Users,
+      color: "text-cyan-500",
+      bgColor: "bg-cyan-500/10",
+      live: true
+    },
+    {
+      title: "Dapp Orders (Live)",
+      value: stats?.dappTotalOrders || 0,
+      icon: ShoppingCart,
+      color: "text-indigo-500",
+      bgColor: "bg-indigo-500/10",
+      live: true
+    },
+    {
+      title: "Total Sales (Live)",
+      value: `€${(stats?.dappTotalSales || 0).toLocaleString()}`,
+      icon: DollarSign,
+      color: "text-green-500",
+      bgColor: "bg-green-500/10",
+      live: true
+    },
+    {
+      title: "Pending Approvals (Live)",
+      value: stats?.dappPendingClients || 0,
+      icon: Clock,
+      color: "text-amber-500",
+      bgColor: "bg-amber-500/10",
+      live: true
+    },
+    // Local Supabase Stats
     {
       title: "Pending Prescriptions",
       value: stats?.pendingPrescriptions || 0,
-      icon: Clock,
+      icon: FileText,
       color: "text-amber-500",
       bgColor: "bg-amber-500/10",
       link: "/admin/prescriptions"
@@ -311,34 +391,6 @@ const AdminDashboard = () => {
       bgColor: "bg-emerald-500/10",
       link: "/admin/strains"
     },
-    {
-      title: "Total Orders",
-      value: stats?.totalOrders || 0,
-      icon: ShoppingCart,
-      color: "text-blue-500",
-      bgColor: "bg-blue-500/10"
-    },
-    {
-      title: "Pending Orders",
-      value: stats?.pendingOrders || 0,
-      icon: TrendingUp,
-      color: "text-orange-500",
-      bgColor: "bg-orange-500/10"
-    },
-    {
-      title: "Total Patients",
-      value: stats?.totalClients || 0,
-      icon: Users,
-      color: "text-violet-500",
-      bgColor: "bg-violet-500/10"
-    },
-    {
-      title: "Verified Patients",
-      value: stats?.verifiedClients || 0,
-      icon: CheckCircle,
-      color: "text-teal-500",
-      bgColor: "bg-teal-500/10"
-    }
   ];
 
   const adminTools = [
@@ -369,10 +421,24 @@ const AdminDashboard = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <h1 className="text-4xl font-bold text-foreground mb-2">Admin Dashboard</h1>
-            <p className="text-muted-foreground mb-8">
-              Overview of system statistics and quick access to admin tools
-            </p>
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h1 className="text-4xl font-bold text-foreground mb-2">Admin Dashboard</h1>
+                <p className="text-muted-foreground">
+                  Live data from Dr Green Dapp API • Connected to production
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => fetchStats(true)}
+                disabled={refreshing}
+                className="flex items-center gap-2"
+              >
+                <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+                Refresh Data
+              </Button>
+            </div>
 
             {/* Admin Account Info & Demo Settings */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-12">
@@ -478,13 +544,20 @@ const AdminDashboard = () => {
                   transition={{ duration: 0.5, delay: index * 0.05 }}
                 >
                   <Card 
-                    className={`cursor-pointer transition-all hover:shadow-lg hover:scale-[1.02] ${stat.link ? 'hover:border-primary/50' : ''}`}
+                    className={`cursor-pointer transition-all hover:shadow-lg hover:scale-[1.02] ${stat.link ? 'hover:border-primary/50' : ''} ${stat.live ? 'border-cyan-500/30 bg-gradient-to-br from-cyan-500/5 to-transparent' : ''}`}
                     onClick={() => stat.link && navigate(stat.link)}
                   >
                     <CardContent className="p-6">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-sm text-muted-foreground mb-1">{stat.title}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm text-muted-foreground mb-1">{stat.title}</p>
+                            {stat.live && (
+                              <span className="px-1.5 py-0.5 text-[10px] font-bold uppercase bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 rounded animate-pulse">
+                                LIVE
+                              </span>
+                            )}
+                          </div>
                           <p className="text-3xl font-bold text-foreground">{stat.value}</p>
                         </div>
                         <div className={`p-3 rounded-full ${stat.bgColor}`}>

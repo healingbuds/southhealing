@@ -121,7 +121,7 @@ export function useDrGreenApi() {
     }>>('get-orders', { clientId });
   };
 
-  // Get strains by country
+  // Get strains by country (client-facing)
   const getStrains = async (countryCode: string) => {
     const alpha3Code = countryCodeMap[countryCode] || countryCode;
     return callProxy<Array<{
@@ -136,7 +136,162 @@ export function useDrGreenApi() {
     }>>('get-strains', { countryCode: alpha3Code });
   };
 
+  // ==========================================
+  // ADMIN / DASHBOARD ENDPOINTS
+  // ==========================================
+  
+  // Get dashboard summary (total clients, orders, sales, etc.)
+  const getDashboardSummary = async () => {
+    return callProxy<{
+      totalClients: number;
+      totalOrders: number;
+      totalSales: number;
+      pendingOrders: number;
+      verifiedClients: number;
+      pendingClients: number;
+    }>('dashboard-summary');
+  };
+
+  // Get dashboard analytics
+  const getDashboardAnalytics = async (params?: {
+    startDate?: string;
+    endDate?: string;
+    filterBy?: string;
+    orderBy?: 'asc' | 'desc';
+  }) => {
+    return callProxy<{
+      salesData: Array<{ date: string; amount: number }>;
+      ordersData: Array<{ date: string; count: number }>;
+    }>('dashboard-analytics', params);
+  };
+
+  // Get sales summary
+  const getSalesSummary = async () => {
+    return callProxy<{
+      totalSales: number;
+      monthlySales: number;
+      weeklySales: number;
+      dailySales: number;
+    }>('sales-summary');
+  };
+
+  // Get all Dapp clients (paginated)
+  const getDappClients = async (params?: {
+    page?: number;
+    take?: number;
+    orderBy?: 'asc' | 'desc';
+    search?: string;
+    searchBy?: string;
+    status?: string;
+    kyc?: boolean;
+    adminApproval?: string;
+  }) => {
+    return callProxy<{
+      clients: Array<{
+        id: string;
+        email: string;
+        firstName: string;
+        lastName: string;
+        isKYCVerified: boolean;
+        adminApproval: string;
+        createdAt: string;
+      }>;
+      total: number;
+      page: number;
+      take: number;
+    }>('dapp-clients', params);
+  };
+
+  // Get client details
+  const getDappClientDetails = async (clientId: string) => {
+    return callProxy<{
+      id: string;
+      email: string;
+      firstName: string;
+      lastName: string;
+      phone: string;
+      address: object;
+      isKYCVerified: boolean;
+      adminApproval: string;
+      createdAt: string;
+      orders: Array<object>;
+    }>('dapp-client-details', { clientId });
+  };
+
+  // Verify or reject a client
+  const verifyDappClient = async (clientId: string, action: 'verify' | 'reject') => {
+    return callProxy<{ success: boolean; message: string }>('dapp-verify-client', { clientId, action });
+  };
+
+  // Get all Dapp orders (paginated)
+  const getDappOrders = async (params?: {
+    page?: number;
+    take?: number;
+    orderBy?: 'asc' | 'desc';
+    search?: string;
+    searchBy?: string;
+    adminApproval?: string;
+    clientIds?: string[];
+  }) => {
+    return callProxy<{
+      orders: Array<{
+        id: string;
+        clientId: string;
+        status: string;
+        paymentStatus: string;
+        totalAmount: number;
+        createdAt: string;
+        items: Array<object>;
+      }>;
+      total: number;
+      page: number;
+      take: number;
+    }>('dapp-orders', params);
+  };
+
+  // Get order details
+  const getDappOrderDetails = async (orderId: string) => {
+    return callProxy<{
+      id: string;
+      clientId: string;
+      status: string;
+      paymentStatus: string;
+      totalAmount: number;
+      items: Array<object>;
+      shippingAddress: object;
+      createdAt: string;
+    }>('dapp-order-details', { orderId });
+  };
+
+  // Update order status
+  const updateDappOrder = async (orderId: string, data: {
+    orderStatus?: string;
+    paymentStatus?: string;
+  }) => {
+    return callProxy<{ success: boolean; message: string }>('dapp-update-order', { orderId, ...data });
+  };
+
+  // Get Dapp strains by country
+  const getDappStrains = async (params?: {
+    countryCode?: string;
+    orderBy?: 'asc' | 'desc';
+    search?: string;
+    searchBy?: string;
+  }) => {
+    return callProxy<{
+      strains: Array<{
+        id: string;
+        name: string;
+        thcContent: number;
+        cbdContent: number;
+        retailPrice: number;
+        availability: boolean;
+      }>;
+    }>('dapp-strains', params);
+  };
+
   return {
+    // Existing methods
     createOrder,
     createPayment,
     getPayment,
@@ -145,5 +300,16 @@ export function useDrGreenApi() {
     getOrders,
     getStrains,
     callProxy,
+    // Admin methods
+    getDashboardSummary,
+    getDashboardAnalytics,
+    getSalesSummary,
+    getDappClients,
+    getDappClientDetails,
+    verifyDappClient,
+    getDappOrders,
+    getDappOrderDetails,
+    updateDappOrder,
+    getDappStrains,
   };
 }
