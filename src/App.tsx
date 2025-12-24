@@ -19,19 +19,8 @@ import { CursorProvider } from "@/context/CursorContext";
 
 // Lazy load pages for better performance
 const Index = lazy(() => import("./pages/Index"));
-const WhatWeDo = lazy(() => import("./pages/WhatWeDo"));
-const TheWire = lazy(() => import("./pages/TheWire"));
-const NewsArticle = lazy(() => import("./pages/NewsArticle"));
-const CultivatingProcessing = lazy(() => import("./pages/CultivatingProcessing"));
-const ManufactureDistribution = lazy(() => import("./pages/ManufactureDistribution"));
-const Conditions = lazy(() => import("./pages/Conditions"));
-const ConditionRouter = lazy(() => import("./pages/conditions/ConditionRouter"));
-const MedicalClinics = lazy(() => import("./pages/MedicalClinics"));
-const OnlinePharmacy = lazy(() => import("./pages/OnlinePharmacy"));
-const Research = lazy(() => import("./pages/Research"));
-const AboutUs = lazy(() => import("./pages/AboutUs"));
-const BlockchainTechnology = lazy(() => import("./pages/BlockchainTechnology"));
-const Contact = lazy(() => import("./pages/Contact"));
+const Eligibility = lazy(() => import("./pages/Eligibility"));
+const Support = lazy(() => import("./pages/Support"));
 const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
 const TermsOfService = lazy(() => import("./pages/TermsOfService"));
 const NotFound = lazy(() => import("./pages/NotFound"));
@@ -55,9 +44,21 @@ const AnimatedRoutes = () => {
     <AnimatePresence mode="wait" initial={false}>
       <Suspense fallback={<PageLoadingSkeleton variant="hero" />}>
         <Routes location={location} key={location.pathname}>
+          {/* Core Pages */}
           <Route path="/" element={<Index />} />
+          <Route path="/eligibility" element={<Eligibility />} />
+          <Route path="/support" element={<Support />} />
           <Route path="/auth" element={<Auth />} />
+          
+          {/* Patient Portal */}
           <Route path="/dashboard" element={<PatientDashboard />} />
+          <Route path="/orders" element={<Orders />} />
+          
+          {/* Shop */}
+          <Route path="/shop" element={<Shop />} />
+          <Route path="/shop/register" element={<ShopRegister />} />
+          <Route path="/shop/cultivar/:cultivarId" element={<CultivarDetail />} />
+          <Route path="/checkout" element={<Checkout />} />
           
           {/* Protected Admin Routes */}
           <Route path="/admin" element={
@@ -76,27 +77,11 @@ const AnimatedRoutes = () => {
             </ProtectedRoute>
           } />
           
-          <Route path="/shop" element={<Shop />} />
-          <Route path="/shop/register" element={<ShopRegister />} />
-          <Route path="/shop/cultivar/:cultivarId" element={<CultivarDetail />} />
-          <Route path="/checkout" element={<Checkout />} />
-          <Route path="/orders" element={<Orders />} />
-          <Route path="/what-we-do" element={<WhatWeDo />} />
-          <Route path="/cultivating-processing" element={<CultivatingProcessing />} />
-          <Route path="/manufacture-distribution" element={<ManufactureDistribution />} />
-          <Route path="/conditions" element={<Conditions />} />
-          <Route path="/conditions/:conditionId" element={<ConditionRouter />} />
-          <Route path="/medical-clinics" element={<MedicalClinics />} />
-          <Route path="/online-pharmacy" element={<OnlinePharmacy />} />
-          <Route path="/research" element={<Research />} />
-          <Route path="/about-us" element={<AboutUs />} />
-          <Route path="/blockchain-technology" element={<BlockchainTechnology />} />
-          <Route path="/the-wire" element={<TheWire />} />
-          <Route path="/the-wire/:articleId" element={<NewsArticle />} />
-          <Route path="/contact" element={<Contact />} />
+          {/* Legal */}
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
           <Route path="/terms-of-service" element={<TermsOfService />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+          
+          {/* 404 */}
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>
@@ -106,7 +91,7 @@ const AnimatedRoutes = () => {
 
 const App = () => (
   <ErrorBoundary>
-    <ThemeProvider defaultTheme="dark" storageKey="healing-buds-theme">
+    <ThemeProvider defaultTheme="light" storageKey="healing-buds-theme">
       <CursorProvider>
         <QueryClientProvider client={queryClient}>
           <TooltipProvider>

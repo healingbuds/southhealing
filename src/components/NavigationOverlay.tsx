@@ -1,20 +1,12 @@
 /**
  * NavigationOverlay Component
  * 
- * Full-screen mobile navigation overlay.
- * Responsibilities:
- * - Full-screen overlay (100vw/100vh)
- * - Focus trap integration
- * - Body scroll locking (iOS-safe)
- * - Escape key handling
- * - Z-index ownership
- * - Blocks all background interaction
- * 
- * Layer ownership: Page → Overlay → Menu Surface
+ * Full-screen mobile navigation overlay for country dispensary site.
+ * Simplified, store-focused navigation.
  */
 
 import { Link, useLocation } from "react-router-dom";
-import { ChevronDown, X, LogOut, LayoutDashboard } from "lucide-react";
+import { X, LogOut, LayoutDashboard } from "lucide-react";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -42,8 +34,6 @@ const NavigationOverlay = ({
   onEligibilityClick,
   scrolled
 }: NavigationOverlayProps) => {
-  const [mobileWhatWeDoOpen, setMobileWhatWeDoOpen] = useState(false);
-  const [mobileAboutUsOpen, setMobileAboutUsOpen] = useState(false);
   const location = useLocation();
   const { t } = useTranslation('common');
   
@@ -52,16 +42,7 @@ const NavigationOverlay = ({
 
   // Active state detection
   const isActive = (path: string) => location.pathname === path;
-  const isWhatWeDoActive = ['/what-we-do', '/cultivating-processing', '/manufacture-distribution', '/medical-clinics', '/online-pharmacy'].includes(location.pathname);
-  const isAboutUsActive = ['/about-us', '/blockchain-technology'].includes(location.pathname);
-
-  // Reset dropdown states when menu closes
-  useEffect(() => {
-    if (!isOpen) {
-      setMobileWhatWeDoOpen(false);
-      setMobileAboutUsOpen(false);
-    }
-  }, [isOpen]);
+  const isShopActive = location.pathname === '/shop' || location.pathname.startsWith('/shop/');
 
   // Lock body scroll when overlay is open - comprehensive iOS support
   useEffect(() => {
@@ -124,6 +105,15 @@ const NavigationOverlay = ({
     onLogout();
     onClose();
   };
+
+  const navLinkStyles = (active: boolean) => cn(
+    "text-base transition-all duration-200 py-4 px-5 rounded-2xl",
+    "touch-manipulation min-h-[56px] flex items-center gap-3 active:scale-[0.98]",
+    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
+    active
+      ? "text-white font-semibold bg-gradient-to-r from-primary/40 to-primary/20 shadow-lg shadow-primary/20"
+      : "text-white/90 hover:text-white hover:bg-white/10"
+  );
 
   return (
     <AnimatePresence>
@@ -199,300 +189,123 @@ const NavigationOverlay = ({
             >
               {/* Navigation Links */}
               <div className="flex flex-col space-y-2">
-                {/* What We Do Section */}
-                <div className="space-y-1">
-                  <button 
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setMobileWhatWeDoOpen(!mobileWhatWeDoOpen);
-                    }}
-                    className={cn(
-                      "w-full font-semibold text-base py-4 px-5 rounded-2xl",
-                      "flex items-center justify-between transition-all duration-200",
-                      "cursor-pointer touch-manipulation min-h-[56px] active:scale-[0.98]",
-                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
-                      isWhatWeDoActive 
-                        ? "text-white bg-gradient-to-r from-primary/40 to-primary/20 shadow-lg shadow-primary/20" 
-                        : "text-white/90 hover:text-white hover:bg-white/10"
-                    )}
-                    aria-expanded={mobileWhatWeDoOpen}
-                  >
-                    <span className="flex items-center gap-3">
-                      {isWhatWeDoActive && (
-                        <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-                      )}
-                      {t('nav.whatWeDo')}
-                    </span>
-                    <ChevronDown className={cn(
-                      "w-5 h-5 transition-transform duration-200 pointer-events-none",
-                      isWhatWeDoActive ? "text-white" : "text-white/60",
-                      mobileWhatWeDoOpen && "rotate-180"
-                    )} />
-                  </button>
-                  <AnimatePresence>
-                    {mobileWhatWeDoOpen && (
-                      <motion.div 
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: "auto", opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
-                        className="overflow-hidden"
-                      >
-                        <div className="ml-4 space-y-1 py-2 pl-4 border-l border-white/15">
-                          {[
-                            { to: '/cultivating-processing', label: 'cultivating' },
-                            { to: '/manufacture-distribution', label: 'manufacture' },
-                            { to: '/medical-clinics', label: 'clinics' },
-                            { to: '/online-pharmacy', label: 'pharmacy' }
-                          ].map(({ to, label }) => (
-                            <Link 
-                              key={to}
-                              to={to}
-                              className={cn(
-                                "block text-base py-3 px-4 rounded-xl transition-all duration-200",
-                                "touch-manipulation min-h-[44px]",
-                                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
-                                isActive(to)
-                                  ? "text-white font-medium bg-white/15"
-                                  : "text-white/70 hover:text-white hover:bg-white/10"
-                              )}
-                              onClick={onClose}
-                            >
-                              {t(`dropdown.${label}`)}
-                            </Link>
-                          ))}
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-
                 <Link 
-                  to="/research" 
-                  className={cn(
-                    "text-base transition-all duration-200 py-4 px-5 rounded-2xl",
-                    "touch-manipulation min-h-[56px] flex items-center gap-3 active:scale-[0.98]",
-                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
-                    isActive("/research") 
-                      ? "text-white font-semibold bg-gradient-to-r from-primary/40 to-primary/20 shadow-lg shadow-primary/20" 
-                      : "text-white/90 hover:text-white hover:bg-white/10"
-                  )}
+                  to="/" 
+                  className={navLinkStyles(isActive("/"))}
                   onClick={onClose}
                 >
-                  {isActive("/research") && (
+                  {isActive("/") && (
                     <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
                   )}
-                  {t('nav.research')}
+                  Home
                 </Link>
 
                 <Link 
-                  to="/the-wire" 
-                  className={cn(
-                    "text-base transition-all duration-200 py-4 px-5 rounded-2xl",
-                    "touch-manipulation min-h-[56px] flex items-center gap-3 active:scale-[0.98]",
-                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
-                    isActive("/the-wire") || location.pathname.startsWith("/the-wire/") 
-                      ? "text-white font-semibold bg-gradient-to-r from-primary/40 to-primary/20 shadow-lg shadow-primary/20" 
-                      : "text-white/90 hover:text-white hover:bg-white/10"
-                  )}
+                  to="/eligibility" 
+                  className={navLinkStyles(isActive("/eligibility"))}
                   onClick={onClose}
                 >
-                  {(isActive("/the-wire") || location.pathname.startsWith("/the-wire/")) && (
+                  {isActive("/eligibility") && (
                     <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
                   )}
-                  {t('nav.theWire')}
+                  Eligibility
                 </Link>
-
-                {/* About Us Section */}
-                <div className="space-y-1">
-                  <button 
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setMobileAboutUsOpen(!mobileAboutUsOpen);
-                    }}
-                    className={cn(
-                      "w-full font-semibold text-base py-4 px-5 rounded-2xl",
-                      "flex items-center justify-between transition-all duration-200",
-                      "cursor-pointer touch-manipulation min-h-[56px] active:scale-[0.98]",
-                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
-                      isAboutUsActive 
-                        ? "text-white bg-gradient-to-r from-primary/40 to-primary/20 shadow-lg shadow-primary/20" 
-                        : "text-white/90 hover:text-white hover:bg-white/10"
-                    )}
-                    aria-expanded={mobileAboutUsOpen}
-                  >
-                    <span className="flex items-center gap-3">
-                      {isAboutUsActive && (
-                        <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-                      )}
-                      {t('nav.aboutUs')}
-                    </span>
-                    <ChevronDown className={cn(
-                      "w-5 h-5 transition-transform duration-200 pointer-events-none",
-                      isAboutUsActive ? "text-white" : "text-white/60",
-                      mobileAboutUsOpen && "rotate-180"
-                    )} />
-                  </button>
-                  <AnimatePresence>
-                    {mobileAboutUsOpen && (
-                      <motion.div 
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: "auto", opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
-                        className="overflow-hidden"
-                      >
-                        <div className="ml-4 space-y-1 py-2 pl-4 border-l border-white/15">
-                          {[
-                            { to: '/about-us', label: 'aboutHealing' },
-                            { to: '/blockchain-technology', label: 'blockchain' }
-                          ].map(({ to, label }) => (
-                            <Link 
-                              key={to}
-                              to={to}
-                              className={cn(
-                                "block text-base py-3 px-4 rounded-xl transition-all duration-200",
-                                "touch-manipulation min-h-[44px]",
-                                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
-                                isActive(to)
-                                  ? "text-white font-medium bg-white/15"
-                                  : "text-white/70 hover:text-white hover:bg-white/10"
-                              )}
-                              onClick={onClose}
-                            >
-                              {t(`dropdown.${label}`)}
-                            </Link>
-                          ))}
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
 
                 <Link 
                   to="/shop" 
-                  className={cn(
-                    "text-base transition-all duration-200 py-4 px-5 rounded-2xl",
-                    "touch-manipulation min-h-[56px] flex items-center gap-3 active:scale-[0.98]",
-                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
-                    isActive("/shop") || location.pathname.startsWith("/shop/") 
-                      ? "text-white font-semibold bg-gradient-to-r from-primary/40 to-primary/20 shadow-lg shadow-primary/20" 
-                      : "text-white/90 hover:text-white hover:bg-white/10"
-                  )}
+                  className={navLinkStyles(isShopActive)}
                   onClick={onClose}
                 >
-                  {(isActive("/shop") || location.pathname.startsWith("/shop/")) && (
+                  {isShopActive && (
                     <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
                   )}
-                  {t('nav.shop')}
+                  Shop
                 </Link>
 
                 <Link 
-                  to="/contact" 
-                  className={cn(
-                    "text-base transition-all duration-200 py-4 px-5 rounded-2xl",
-                    "touch-manipulation min-h-[56px] flex items-center gap-3 active:scale-[0.98]",
-                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
-                    isActive("/contact") 
-                      ? "text-white font-semibold bg-gradient-to-r from-primary/40 to-primary/20 shadow-lg shadow-primary/20" 
-                      : "text-white/90 hover:text-white hover:bg-white/10"
-                  )}
+                  to="/support" 
+                  className={navLinkStyles(isActive("/support"))}
                   onClick={onClose}
                 >
-                  {isActive("/contact") && (
+                  {isActive("/support") && (
                     <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
                   )}
-                  {t('nav.contactUs')}
+                  Support
                 </Link>
               </div>
 
               {/* Divider */}
-              <div className="my-8 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+              <div className="my-6 h-px bg-white/10" />
 
-              {/* Mobile CTAs */}
-              <div className="space-y-4">
-                <button
-                  type="button"
-                  onClick={handleEligibility}
-                  className={cn(
-                    "w-full font-semibold px-6 py-4 rounded-2xl",
-                    "transition-all duration-300 ease-out active:scale-[0.97]",
-                    "bg-gradient-to-r from-primary to-primary/80 text-white text-base",
-                    "shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/40",
-                    "hover:from-primary/90 hover:to-primary/70",
-                    "touch-manipulation min-h-[56px]",
-                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
-                  )}
-                >
-                  {t('nav.checkEligibility')}
-                </button>
+              {/* User Section */}
+              <div className="space-y-3">
                 {user ? (
                   <>
                     <Link
                       to="/dashboard"
                       onClick={onClose}
                       className={cn(
-                        "w-full font-semibold px-6 py-4 rounded-2xl",
-                        "transition-all duration-300 ease-out active:scale-[0.97]",
-                        "bg-white/10 backdrop-blur-sm border border-white/20 text-white text-base",
-                        "flex items-center justify-center gap-3",
-                        "hover:bg-white/15 hover:border-white/30",
-                        "touch-manipulation min-h-[56px]",
-                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+                        "flex items-center gap-3 py-4 px-5 rounded-2xl transition-all duration-200",
+                        "touch-manipulation min-h-[56px] active:scale-[0.98]",
+                        "text-white/90 hover:text-white hover:bg-white/10",
+                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
                       )}
                     >
                       <LayoutDashboard className="w-5 h-5" />
-                      Patient Portal
+                      <span>Patient Portal</span>
                     </Link>
                     <button
-                      type="button"
                       onClick={handleLogout}
                       className={cn(
-                        "w-full font-semibold px-6 py-4 rounded-2xl",
-                        "transition-all duration-300 ease-out active:scale-[0.97]",
-                        "bg-white/5 border border-white/10 text-white/80 text-base",
-                        "flex items-center justify-center gap-3",
-                        "hover:bg-white/10 hover:text-white hover:border-white/20",
-                        "touch-manipulation min-h-[56px]",
-                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+                        "w-full flex items-center gap-3 py-4 px-5 rounded-2xl transition-all duration-200",
+                        "touch-manipulation min-h-[56px] active:scale-[0.98]",
+                        "text-white/90 hover:text-white hover:bg-white/10",
+                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
                       )}
                     >
                       <LogOut className="w-5 h-5" />
-                      {t('nav.signOut')}
+                      <span>Sign Out</span>
                     </button>
                   </>
                 ) : (
-                  <Link
-                    to="/auth"
-                    onClick={onClose}
-                    className={cn(
-                      "flex items-center justify-center gap-3 w-full text-center",
-                      "font-semibold px-6 py-4 rounded-2xl",
-                      "transition-all duration-300 ease-out active:scale-[0.97]",
-                      "bg-white/10 backdrop-blur-sm border border-white/20 text-white text-base",
-                      "hover:bg-white/15 hover:border-white/30",
-                      "touch-manipulation min-h-[56px]",
-                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
-                    )}
-                  >
-                    <LayoutDashboard className="w-5 h-5" />
-                    {t('nav.patientLogin')}
-                  </Link>
+                  <>
+                    <Link
+                      to="/auth"
+                      onClick={onClose}
+                      className={cn(
+                        "flex items-center justify-center gap-2 py-4 px-5 rounded-2xl transition-all duration-200",
+                        "touch-manipulation min-h-[56px] active:scale-[0.98]",
+                        "bg-white text-primary font-semibold",
+                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+                      )}
+                    >
+                      Sign In
+                    </Link>
+                    <button
+                      onClick={handleEligibility}
+                      className={cn(
+                        "w-full flex items-center justify-center gap-2 py-4 px-5 rounded-2xl transition-all duration-200",
+                        "touch-manipulation min-h-[56px] active:scale-[0.98]",
+                        "bg-primary/20 text-white font-semibold border border-white/20",
+                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+                      )}
+                    >
+                      Check Eligibility
+                    </button>
+                  </>
                 )}
               </div>
 
               {/* Divider */}
-              <div className="my-8 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+              <div className="my-6 h-px bg-white/10" />
 
-              {/* Bottom Section: Language & Theme */}
-              <div className="flex items-center justify-center gap-6 px-2">
-                <LanguageSwitcher scrolled={scrolled} />
-                <div className="w-px h-6 bg-white/20" />
-                <ThemeToggle variant="button" className="" />
+              {/* Settings */}
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <span className="text-white/60 text-sm">Language:</span>
+                  <LanguageSwitcher />
+                </div>
+                <ThemeToggle />
               </div>
             </div>
           </motion.nav>

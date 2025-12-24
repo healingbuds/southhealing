@@ -26,7 +26,7 @@ const Footer = () => {
                 />
               </Link>
               <p className="font-body text-white/70 text-sm leading-relaxed mb-6">
-                {t('footer.tagline')}
+                Pharmaceutical-grade medical cannabis for qualifying patients. EU GMP certified with full seed-to-sale traceability.
               </p>
               <div className="space-y-3">
                 <div className="flex items-start gap-3 text-white/60 text-sm group">
@@ -48,56 +48,56 @@ const Footer = () => {
             {/* Navigation Columns */}
             <div className="lg:col-span-8 grid grid-cols-2 sm:grid-cols-3 gap-10">
               
-              {/* Company */}
+              {/* Patient */}
               <div>
                 <h4 className="font-jakarta font-semibold text-sm uppercase tracking-wider mb-5 text-white/90 flex items-center gap-2">
                   <Leaf size={14} className="text-primary flex-shrink-0" />
-                  {t('footer.company')}
+                  Patient
                 </h4>
                 <ul className="space-y-3">
                   <li>
-                    <Link to="/about-us" className="font-body text-sm text-white/60 hover:text-white transition-colors inline-block hover:translate-x-1 transform duration-200">
-                      {t('footer.aboutUs')}
+                    <Link to="/eligibility" className="font-body text-sm text-white/60 hover:text-white transition-colors inline-block hover:translate-x-1 transform duration-200">
+                      Check Eligibility
                     </Link>
                   </li>
                   <li>
-                    <Link to="/what-we-do" className="font-body text-sm text-white/60 hover:text-white transition-colors inline-block hover:translate-x-1 transform duration-200">
-                      {t('footer.ourStandards')}
+                    <Link to="/shop" className="font-body text-sm text-white/60 hover:text-white transition-colors inline-block hover:translate-x-1 transform duration-200">
+                      Shop Products
                     </Link>
                   </li>
                   <li>
-                    <Link to="/research" className="font-body text-sm text-white/60 hover:text-white transition-colors inline-block hover:translate-x-1 transform duration-200">
-                      {t('footer.research')}
+                    <Link to="/dashboard" className="font-body text-sm text-white/60 hover:text-white transition-colors inline-block hover:translate-x-1 transform duration-200">
+                      Patient Portal
                     </Link>
                   </li>
                   <li>
-                    <Link to="/the-wire" className="font-body text-sm text-white/60 hover:text-white transition-colors inline-block hover:translate-x-1 transform duration-200">
-                      {t('footer.theWire')}
+                    <Link to="/orders" className="font-body text-sm text-white/60 hover:text-white transition-colors inline-block hover:translate-x-1 transform duration-200">
+                      My Orders
                     </Link>
                   </li>
                 </ul>
               </div>
 
-              {/* Resources */}
+              {/* Support */}
               <div>
                 <h4 className="font-jakarta font-semibold text-sm uppercase tracking-wider mb-5 text-white/90 flex items-center gap-2">
                   <Leaf size={14} className="text-primary flex-shrink-0" />
-                  {t('footer.resources')}
+                  Support
                 </h4>
                 <ul className="space-y-3">
                   <li>
-                    <Link to="/contact" className="font-body text-sm text-white/60 hover:text-white transition-colors inline-block hover:translate-x-1 transform duration-200">
-                      {t('footer.patientAccess')}
+                    <Link to="/support" className="font-body text-sm text-white/60 hover:text-white transition-colors inline-block hover:translate-x-1 transform duration-200">
+                      FAQ
                     </Link>
                   </li>
                   <li>
-                    <Link to="/conditions" className="font-body text-sm text-white/60 hover:text-white transition-colors inline-block hover:translate-x-1 transform duration-200">
-                      {t('footer.conditionsTreated')}
+                    <Link to="/support" className="font-body text-sm text-white/60 hover:text-white transition-colors inline-block hover:translate-x-1 transform duration-200">
+                      Contact Us
                     </Link>
                   </li>
                   <li>
-                    <Link to="/contact" className="font-body text-sm text-white/60 hover:text-white transition-colors inline-block hover:translate-x-1 transform duration-200">
-                      {t('footer.franchiseOpportunities')}
+                    <Link to="/support#delivery" className="font-body text-sm text-white/60 hover:text-white transition-colors inline-block hover:translate-x-1 transform duration-200">
+                      Shipping Info
                     </Link>
                   </li>
                 </ul>
@@ -107,22 +107,17 @@ const Footer = () => {
               <div>
                 <h4 className="font-jakarta font-semibold text-sm uppercase tracking-wider mb-5 text-white/90 flex items-center gap-2">
                   <Leaf size={14} className="text-primary flex-shrink-0" />
-                  {t('footer.legal')}
+                  Legal
                 </h4>
                 <ul className="space-y-3">
                   <li>
                     <Link to="/privacy-policy" className="font-body text-sm text-white/60 hover:text-white transition-colors inline-block hover:translate-x-1 transform duration-200">
-                      {t('footer.privacyPolicy')}
+                      Privacy Policy
                     </Link>
                   </li>
                   <li>
                     <Link to="/terms-of-service" className="font-body text-sm text-white/60 hover:text-white transition-colors inline-block hover:translate-x-1 transform duration-200">
-                      {t('footer.termsOfService')}
-                    </Link>
-                  </li>
-                  <li>
-                    <Link to="/contact" className="font-body text-sm text-white/60 hover:text-white transition-colors inline-block hover:translate-x-1 transform duration-200">
-                      {t('footer.compliance')}
+                      Terms of Service
                     </Link>
                   </li>
                 </ul>
@@ -136,10 +131,10 @@ const Footer = () => {
         <div className="py-8">
           <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
             <p className="font-body text-white/50 text-xs">
-              {t('footer.copyright', { year: currentYear })}
+              © {currentYear} Healing Buds. All rights reserved.
             </p>
             <p className="font-body text-white/40 text-xs">
-              {t('footer.commitment')}
+              Medical cannabis for qualifying patients only.
             </p>
           </div>
         </div>
