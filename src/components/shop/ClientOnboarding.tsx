@@ -149,31 +149,46 @@ export function ClientOnboarding() {
         return;
       }
 
-      // Call edge function to create client
-      const { data: result, error } = await supabase.functions.invoke('drgreen-proxy', {
-        body: {
-          action: 'create-client',
-          data: {
-            personal: formData.personal,
-            address: formData.address,
-            medicalRecord: data,
-          },
-        },
-      });
+      // Prepare client data
+      let clientId = `local-${Date.now()}`;
+      let kycLink = null;
 
-      if (error) throw error;
+      // Try to call edge function to create client (non-blocking)
+      try {
+        const { data: result, error } = await supabase.functions.invoke('drgreen-proxy', {
+          body: {
+            action: 'create-client',
+            data: {
+              personal: formData.personal,
+              address: formData.address,
+              medicalRecord: data,
+            },
+          },
+        });
+
+        if (!error && result?.clientId) {
+          clientId = result.clientId;
+          kycLink = result.kycLink || null;
+        }
+      } catch (apiError) {
+        // Edge function failed - continue with local client ID
+        console.warn('Dr Green API unavailable, using local client ID:', apiError);
+      }
 
       // Store client info locally
       const { error: dbError } = await supabase.from('drgreen_clients').insert({
         user_id: user.id,
-        drgreen_client_id: result.clientId || `mock-${Date.now()}`,
+        drgreen_client_id: clientId,
         country_code: formData.address?.country || 'PT',
         is_kyc_verified: false,
         admin_approval: 'PENDING',
-        kyc_link: result.kycLink || null,
+        kyc_link: kycLink,
       });
 
-      if (dbError) throw dbError;
+      if (dbError) {
+        // Only show error if DB insertion fails
+        throw dbError;
+      }
 
       await refreshClient();
       setCurrentStep(3);

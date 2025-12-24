@@ -27,6 +27,7 @@ import { useOrderTracking } from '@/hooks/useOrderTracking';
 import { supabase } from '@/integrations/supabase/client';
 import { useState, useEffect } from 'react';
 import { User as SupabaseUser } from '@supabase/supabase-js';
+import { formatPrice } from '@/lib/currency';
 
 const PatientDashboard = () => {
   const navigate = useNavigate();
@@ -112,7 +113,7 @@ const PatientDashboard = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <main className="pt-32 pb-20">
+      <main className="pt-32 pb-24 lg:pb-20">
         <div className="container mx-auto px-4">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -257,7 +258,7 @@ const PatientDashboard = () => {
                               </p>
                             </div>
                             <div className="flex items-center gap-3">
-                              <span className="font-medium">€{order.total_amount.toFixed(2)}</span>
+                              <span className="font-medium">{formatPrice(order.total_amount, drGreenClient?.country_code || 'PT')}</span>
                               <Badge variant={
                                 order.status === 'DELIVERED' ? 'default' :
                                 order.status === 'CANCELLED' ? 'destructive' : 'secondary'
@@ -333,7 +334,7 @@ const PatientDashboard = () => {
                       </div>
                       <div className="flex justify-between font-medium border-t pt-3">
                         <span>Total</span>
-                        <span className="text-primary">€{cartTotal.toFixed(2)}</span>
+                        <span className="text-primary">{formatPrice(cartTotal, drGreenClient?.country_code || 'PT')}</span>
                       </div>
                       <Button 
                         className="w-full" 

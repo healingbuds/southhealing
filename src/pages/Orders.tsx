@@ -9,6 +9,7 @@ import Footer from '@/components/Footer';
 import { EligibilityGate } from '@/components/shop/EligibilityGate';
 import { useOrderTracking } from '@/hooks/useOrderTracking';
 import { useShop } from '@/context/ShopContext';
+import { formatPrice } from '@/lib/currency';
 
 const getStatusIcon = (status: string) => {
   switch (status.toUpperCase()) {
@@ -48,6 +49,7 @@ const getStatusVariant = (status: string): 'default' | 'secondary' | 'destructiv
 const Orders = () => {
   const navigate = useNavigate();
   const { orders, isLoading, reorder } = useOrderTracking();
+  const { drGreenClient } = useShop();
   const { setIsCartOpen, isEligible } = useShop();
 
   const handleReorder = async (order: typeof orders[0]) => {
@@ -145,7 +147,7 @@ const Orders = () => {
                               </div>
                               <div className="flex items-center gap-3">
                                 <p className="font-semibold text-foreground text-lg">
-                                  €{order.total_amount.toFixed(2)}
+                                  {formatPrice(order.total_amount, drGreenClient?.country_code || 'PT')}
                                 </p>
                               </div>
                             </div>
@@ -159,7 +161,7 @@ const Orders = () => {
                                     <div key={idx} className="flex justify-between text-sm">
                                       <span className="text-foreground">{item.strain_name}</span>
                                       <span className="text-muted-foreground">
-                                        {item.quantity}g × €{item.unit_price.toFixed(2)}
+                                        {item.quantity}g × {formatPrice(item.unit_price, drGreenClient?.country_code || 'PT')}
                                       </span>
                                     </div>
                                   ))}

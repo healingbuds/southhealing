@@ -7,7 +7,7 @@ import { Product, DataSource } from '@/hooks/useProducts';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { useTranslation } from 'react-i18next';
-
+import { formatPrice } from '@/lib/currency';
 interface ProductCardProps {
   product: Product;
   onViewDetails: (product: Product) => void;
@@ -212,7 +212,7 @@ export function ProductCard({ product, onViewDetails, showDataSource = false }: 
             </h3>
             <div className="flex flex-col items-end shrink-0">
               <span className="text-xl font-bold text-primary">
-                €{product.retailPrice.toFixed(2)}
+                {formatPrice(product.retailPrice, drGreenClient?.country_code || 'PT')}
               </span>
               <span className="text-[10px] text-muted-foreground uppercase tracking-wide">per gram</span>
             </div>

@@ -52,12 +52,14 @@ const ManufactureDistribution = () => {
             <div className="container mx-auto px-4 sm:px-6 lg:px-8">
               <div className="grid md:grid-cols-2 gap-12 items-center max-w-6xl mx-auto">
                 <ScrollAnimation>
-                  <h2 className="text-4xl font-semibold text-foreground leading-tight mb-6">
-                    Production & Processing Excellence
-                  </h2>
-                  <p className="text-lg text-muted-foreground/80 leading-relaxed">
-                    With our production partner Dr Green's state-of-the-art global facilities spanning more than 18,000 square metres dedicated to pharmaceutical-grade cannabis production alongside fully EU GMP approved facilities, this allows us to consistently break barriers delivering excellence.
-                  </p>
+                  <div className="text-center md:text-left">
+                    <h2 className="text-4xl font-semibold text-foreground leading-tight mb-6">
+                      Production & Processing Excellence
+                    </h2>
+                    <p className="text-lg text-muted-foreground/80 leading-relaxed">
+                      With our production partner Dr Green's state-of-the-art global facilities spanning more than 18,000 square metres dedicated to pharmaceutical-grade cannabis production alongside fully EU GMP approved facilities, this allows us to consistently break barriers delivering excellence.
+                    </p>
+                  </div>
                 </ScrollAnimation>
                 <ScrollAnimation delay={0.2}>
                   <p className="text-lg text-muted-foreground/80 leading-relaxed mb-4">

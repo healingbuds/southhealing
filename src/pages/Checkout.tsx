@@ -13,6 +13,7 @@ import { useTranslation } from 'react-i18next';
 import { useToast } from '@/hooks/use-toast';
 import { useDrGreenApi } from '@/hooks/useDrGreenApi';
 import { useOrderTracking } from '@/hooks/useOrderTracking';
+import { formatPrice, getCurrencyForCountry } from '@/lib/currency';
 
 const Checkout = () => {
   const { cart, cartTotal, clearCart, drGreenClient } = useShop();
@@ -53,10 +54,11 @@ const Checkout = () => {
       setPaymentStatus('Initiating payment...');
 
       // Step 2: Create payment via Dr Green API
+      const countryCode = drGreenClient.country_code || 'PT';
       const paymentResult = await createPayment({
         orderId: createdOrderId,
         amount: cartTotal,
-        currency: 'EUR',
+        currency: getCurrencyForCountry(countryCode),
         clientId: drGreenClient.drgreen_client_id,
       });
 
@@ -239,11 +241,11 @@ const Checkout = () => {
                               {item.strain_name}
                             </p>
                             <p className="text-sm text-muted-foreground">
-                              Qty: {item.quantity} × €{item.unit_price.toFixed(2)}
+                              Qty: {item.quantity} × {formatPrice(item.unit_price, drGreenClient?.country_code || 'PT')}
                             </p>
                           </div>
                           <p className="font-semibold text-foreground">
-                            €{(item.quantity * item.unit_price).toFixed(2)}
+                            {formatPrice(item.quantity * item.unit_price, drGreenClient?.country_code || 'PT')}
                           </p>
                         </div>
                       ))}
@@ -252,7 +254,7 @@ const Checkout = () => {
 
                       <div className="flex items-center justify-between text-lg font-bold">
                         <span>Total</span>
-                        <span className="text-primary">€{cartTotal.toFixed(2)}</span>
+                        <span className="text-primary">{formatPrice(cartTotal, drGreenClient?.country_code || 'PT')}</span>
                       </div>
                     </CardContent>
                   </Card>
@@ -300,7 +302,7 @@ const Checkout = () => {
                         ) : (
                           <>
                             <CreditCard className="mr-2 h-4 w-4" />
-                            Place Order - €{cartTotal.toFixed(2)}
+                            Place Order - {formatPrice(cartTotal, drGreenClient?.country_code || 'PT')}
                           </>
                         )}
                       </Button>

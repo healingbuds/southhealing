@@ -19,20 +19,20 @@ export interface NewsArticle {
 
 export const newsArticles: NewsArticle[] = [
   {
-    id: "healing-buds-budstacks-partnership",
+    id: "healing-buds-popcorn-partnership",
     category: "Healing Buds",
-    title: "Healing Buds Global: How Budstacks Built the Blueprint for Compliant Cannabis Technology",
-    description: "Healing Buds Global stands as the flagship implementation of Budstacks' comprehensive cannabis SaaS platform, demonstrating how white-label technology enables rapid market entry under EU GMP certification.",
+    title: "Healing Buds Global: How Popcorn Built the Blueprint for Compliant Cannabis Technology",
+    description: "Healing Buds Global stands as the flagship implementation of Popcorn's comprehensive cannabis SaaS platform, demonstrating how white-label technology enables rapid market entry under EU GMP certification.",
     image: conferenceHq,
     featured: true,
-    tags: ["Healing Buds", "Budstacks", "Technology", "SaaS"],
+    tags: ["Healing Buds", "Popcorn", "Technology", "SaaS"],
     author: "Healing Buds Editorial",
     date: "Nov 28, 2024",
     content: [
-      "Healing Buds Global represents the definitive proof of concept for Budstacks' end-to-end cannabis business platform. As a specialist agency in web and app development, payment processing, customer support infrastructure, white-labeling, and NFT franchising, Budstacks has created a turnkey solution that transforms how entrepreneurs enter the regulated cannabis market.",
-      "The Healing Buds platform showcases every capability in the Budstacks stack: a fully responsive patient-facing website, integrated eligibility checking, secure payment processing compliant with cannabis industry regulations, and backend systems that connect directly to EU GMP certified supply chain.",
-      "What makes this partnership significant is the replicability. Budstacks designed the Healing Buds infrastructure to be white-labeled, meaning any entrepreneur operating under the franchise framework can deploy an identical caliber platform customized to their brand within weeks, not years.",
-      "The NFT franchising component is particularly innovative. Using blockchain technology, Budstacks has created a transparent system for managing franchise agreements, tracking royalties, and verifying compliance across the entire network of operators.",
+      "Healing Buds Global represents the definitive proof of concept for Popcorn's end-to-end cannabis business platform. As a specialist agency in web and app development, payment processing, customer support infrastructure, white-labeling, and NFT franchising, Popcorn has created a turnkey solution that transforms how entrepreneurs enter the regulated cannabis market.",
+      "The Healing Buds platform showcases every capability in the Popcorn stack: a fully responsive patient-facing website, integrated eligibility checking, secure payment processing compliant with cannabis industry regulations, and backend systems that connect directly to EU GMP certified supply chain.",
+      "What makes this partnership significant is the replicability. Popcorn designed the Healing Buds infrastructure to be white-labeled, meaning any entrepreneur operating under the franchise framework can deploy an identical caliber platform customized to their brand within weeks, not years.",
+      "The NFT franchising component is particularly innovative. Using blockchain technology, Popcorn has created a transparent system for managing franchise agreements, tracking royalties, and verifying compliance across the entire network of operators.",
       "For aspiring cannabis entrepreneurs, Healing Buds Global isn't just a medical cannabis provider—it's a template for what's possible when world-class technology meets proper regulatory framework."
     ],
   },
@@ -67,27 +67,27 @@ export const newsArticles: NewsArticle[] = [
     content: [
       "Traditional cannabis entrepreneurship requires staggering capital—cultivation facilities, extraction labs, compliance teams, regulatory applications. Building that infrastructure takes years and tens of millions. Now, through an innovative franchise model, that investment becomes accessible to entrepreneurs who share the vision but lack the capital.",
       "The franchise framework operates on a simple principle: centralize the complexity, distribute the opportunity. EU GMP certified facilities maintain the regulatory relationships, quality control systems, and product development. Franchisees focus on their local markets, patient relationships, and business growth.",
-      "Technology partner Budstacks provides the operational infrastructure. Every franchisee receives a fully-configured platform including patient management, order processing, compliance documentation, and direct integration with the supply chain. Healing Buds Global serves as the showcase implementation, demonstrating the platform's capabilities to prospective franchisees.",
+      "Technology partner Popcorn provides the operational infrastructure. Every franchisee receives a fully-configured platform including patient management, order processing, compliance documentation, and direct integration with the supply chain. Healing Buds Global serves as the showcase implementation, demonstrating the platform's capabilities to prospective franchisees.",
       "Franchise packages accommodate various ambitions and capital levels. Entry-level dropshipping arrangements require minimal upfront investment. Mid-tier packages include branded storefronts and local marketing support. Enterprise packages enable multi-location operators to build regional cannabis businesses.",
       "The response has been overwhelming. Entrepreneurs across Portugal, the UK, and expanding European markets are applying for franchise positions, attracted by the combination of regulatory certainty, technology infrastructure, and growing brand recognition."
     ],
   },
   {
-    id: "budstacks-white-label-cannabis-saas",
+    id: "popcorn-white-label-cannabis-saas",
     category: "Technology",
-    title: "Inside Budstacks: The SaaS Platform Powering Healing Buds and the Cannabis Franchise Revolution",
+    title: "Inside Popcorn: The SaaS Platform Powering Healing Buds and the Cannabis Franchise Revolution",
     description: "A deep dive into the technology agency's comprehensive platform for web development, payment processing, support systems, white-labeling, and NFT-based franchise management.",
     image: awardHq,
     featured: false,
-    tags: ["Budstacks", "Technology", "Healing Buds", "SaaS", "NFT"],
-    author: "Budstacks",
+    tags: ["Popcorn", "Technology", "Healing Buds", "SaaS", "NFT"],
+    author: "Popcorn",
     date: "Nov 15, 2024",
     content: [
-      "Budstacks emerged from a recognition that the cannabis industry's technology needs were fundamentally underserved. Entrepreneurs faced a brutal choice: spend millions on custom development or cobble together inadequate generic solutions. Budstacks built the third option—purpose-built cannabis SaaS that deploys in weeks and scales indefinitely.",
+      "Popcorn emerged from a recognition that the cannabis industry's technology needs were fundamentally underserved. Entrepreneurs faced a brutal choice: spend millions on custom development or cobble together inadequate generic solutions. Popcorn built the third option—purpose-built cannabis SaaS that deploys in weeks and scales indefinitely.",
       "The platform encompasses every operational requirement. Web and mobile applications handle patient-facing interactions with compliant design patterns. Payment processing navigates the complex banking relationships that plague cannabis businesses. Customer support systems manage the high-touch communication that medical cannabis patients require. Backend integrations connect to supply chain, inventory, and compliance systems.",
-      "White-labeling sits at the platform's core. Healing Buds Global runs on Budstacks infrastructure, but nothing in the patient experience reveals that. The same applies to any operator using the platform—they present their own brand while benefiting from enterprise-grade technology.",
-      "The NFT franchising module represents Budstacks' most innovative contribution. Franchise agreements, revenue sharing arrangements, and compliance certifications are recorded on blockchain, creating transparent and auditable records that satisfy both business partners and regulators. This isn't cryptocurrency speculation—it's practical application of blockchain for business operations.",
-      "Development continues rapidly. Upcoming releases include enhanced telemedicine integration, AI-powered patient matching for strain recommendations, and expanded payment options as banking relationships in the cannabis industry mature. Budstacks isn't just serving the current market—it's building for the industry's future."
+      "White-labeling sits at the platform's core. Healing Buds Global runs on Popcorn infrastructure, but nothing in the patient experience reveals that. The same applies to any operator using the platform—they present their own brand while benefiting from enterprise-grade technology.",
+      "The NFT franchising module represents Popcorn's most innovative contribution. Franchise agreements, revenue sharing arrangements, and compliance certifications are recorded on blockchain, creating transparent and auditable records that satisfy both business partners and regulators. This isn't cryptocurrency speculation—it's practical application of blockchain for business operations.",
+      "Development continues rapidly. Upcoming releases include enhanced telemedicine integration, AI-powered patient matching for strain recommendations, and expanded payment options as banking relationships in the cannabis industry mature. Popcorn isn't just serving the current market—it's building for the industry's future."
     ],
   },
 ];
