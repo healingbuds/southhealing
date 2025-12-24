@@ -21,7 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useShop } from "@/context/ShopContext";
 import { useProducts } from "@/hooks/useProducts";
-import ProductCard from "@/components/shop/ProductCard";
+import { ProductCard } from "@/components/shop/ProductCard";
 
 const trustIndicators = [
   { icon: Award, label: "EU GMP Certified" },
@@ -39,8 +39,8 @@ const eligibilitySteps = [
 const Index = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const navigate = useNavigate();
-  const { user, isEligible, client } = useShop();
-  const { data: products, isLoading: productsLoading } = useProducts();
+  const { drGreenClient, isEligible, countryCode } = useShop();
+  const { products, isLoading: productsLoading } = useProducts(countryCode);
 
   // Get featured products (first 4 available products)
   const featuredProducts = products?.slice(0, 4) || [];
@@ -108,9 +108,9 @@ const Index = () => {
                         size="lg" 
                         variant="outline"
                         className="text-lg px-8 py-6"
-                        onClick={() => navigate(user ? '/eligibility' : '/auth')}
+                        onClick={() => navigate(drGreenClient ? '/eligibility' : '/auth')}
                       >
-                        {user ? 'Start Assessment' : 'Sign In'}
+                        {drGreenClient ? 'Start Assessment' : 'Sign In'}
                       </Button>
                     )}
                   </div>
@@ -136,7 +136,7 @@ const Index = () => {
           </section>
 
           {/* Eligibility Status Banner (for logged in users) */}
-          {user && client && !isEligible && (
+          {drGreenClient && !isEligible && (
             <section className="py-6 bg-amber-500/10 border-y border-amber-500/20">
               <div className="container mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-4 text-center sm:text-left">
@@ -144,7 +144,7 @@ const Index = () => {
                   <p className="text-foreground">
                     <span className="font-semibold">Verification in progress</span>
                     <span className="text-muted-foreground ml-2">
-                      {client.is_kyc_verified 
+                      {drGreenClient.is_kyc_verified 
                         ? 'Awaiting medical review approval' 
                         : 'Please complete identity verification to continue'}
                     </span>
@@ -246,7 +246,7 @@ const Index = () => {
                         viewport={{ once: true }}
                         transition={{ delay: index * 0.1 }}
                       >
-                        <ProductCard product={product} />
+                        <ProductCard product={product} onViewDetails={() => navigate(`/shop/cultivar/${product.id}`)} />
                       </motion.div>
                     ))}
                   </div>

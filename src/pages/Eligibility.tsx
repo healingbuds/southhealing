@@ -61,11 +61,11 @@ const processSteps = [
 const Eligibility = () => {
   const [showQuestionnaire, setShowQuestionnaire] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const { client, isEligible, user } = useShop();
+  const { drGreenClient, isEligible } = useShop();
   const navigate = useNavigate();
 
   const handleStartAssessment = () => {
-    if (!user) {
+    if (!drGreenClient) {
       navigate('/auth?redirect=/eligibility');
       return;
     }
@@ -106,7 +106,7 @@ const Eligibility = () => {
                   </p>
                   
                   {/* Status Display for Existing Users */}
-                  {client && (
+                  {drGreenClient && (
                     <motion.div
                       initial={{ opacity: 0, scale: 0.95 }}
                       animate={{ opacity: 1, scale: 1 }}
@@ -129,14 +129,14 @@ const Eligibility = () => {
                           <div className="text-left">
                             <p className="font-semibold text-amber-600 dark:text-amber-400">Verification Pending</p>
                             <p className="text-sm text-muted-foreground">
-                              {client.is_kyc_verified 
+                              {drGreenClient.is_kyc_verified 
                                 ? 'Awaiting medical review approval' 
                                 : 'Please complete KYC verification'}
                             </p>
                           </div>
-                          {client.kyc_link && !client.is_kyc_verified && (
+                          {drGreenClient.kyc_link && !drGreenClient.is_kyc_verified && (
                             <Button asChild variant="outline" className="ml-4">
-                              <a href={client.kyc_link} target="_blank" rel="noopener noreferrer">
+                              <a href={drGreenClient.kyc_link} target="_blank" rel="noopener noreferrer">
                                 Complete KYC
                               </a>
                             </Button>
@@ -146,7 +146,7 @@ const Eligibility = () => {
                     </motion.div>
                   )}
                   
-                  {!client && !showQuestionnaire && (
+                  {!drGreenClient && !showQuestionnaire && (
                     <Button 
                       size="lg" 
                       onClick={handleStartAssessment}
@@ -162,7 +162,7 @@ const Eligibility = () => {
           </section>
 
           {/* Medical Questionnaire */}
-          {showQuestionnaire && !client && (
+          {showQuestionnaire && !drGreenClient && (
             <section className="py-8">
               <div className="container mx-auto px-4 sm:px-6 lg:px-8">
                 <ClientOnboarding />
@@ -288,7 +288,7 @@ const Eligibility = () => {
           </section>
 
           {/* CTA Section */}
-          {!showQuestionnaire && !client && (
+          {!showQuestionnaire && !drGreenClient && (
             <section className="py-16">
               <div className="container mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="max-w-3xl mx-auto text-center">
