@@ -150,7 +150,7 @@ const Header = ({ onMenuStateChange }: HeaderProps) => {
           transition: 'background-color 0.5s ease-out, transform 0.5s ease-out'
         }}
       >
-        <div className="container mx-auto px-3 sm:px-4 lg:px-6 xl:px-8">
+        <div className="container mx-auto px-4 sm:px-6 md:px-8 lg:px-10 xl:px-12">
           <div className={cn(
             "flex items-center justify-between transition-all duration-500 ease-out",
             scrolled ? "h-20 md:h-[88px]" : "h-24 md:h-28"
@@ -353,7 +353,7 @@ const Header = ({ onMenuStateChange }: HeaderProps) => {
             <ThemeToggle />
 
             {/* Desktop Action Buttons */}
-            <div className="flex items-center gap-1.5 xl:gap-2 ml-1 xl:ml-2 flex-shrink-0">
+            <div className="flex items-center gap-1.5 xl:gap-2 flex-shrink-0">
               <button
                 onClick={() => setEligibilityDialogOpen(true)}
                 className={cn(
