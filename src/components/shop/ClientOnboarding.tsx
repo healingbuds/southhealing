@@ -211,10 +211,17 @@ export function ClientOnboarding() {
 
   const handlePersonalSubmit = (data: PersonalDetails) => {
     // Double-check age validation with country-specific minimum
-    const minimumAge = getMinimumAge(selectedCountry);
+    const minAge = getMinimumAge(selectedCountry);
     const age = calculateAge(data.dateOfBirth);
-    if (age < minimumAge) {
-      setAgeError(`You must be at least ${minimumAge} years old to register for medical cannabis in your region`);
+    if (age < minAge) {
+      // Redirect to Not Eligible page with context
+      navigate('/not-eligible', { 
+        state: { 
+          reason: 'age', 
+          country: countries.find(c => c.code === selectedCountry)?.name,
+          minimumAge: minAge 
+        } 
+      });
       return;
     }
     setAgeError(null);
@@ -226,7 +233,13 @@ export function ClientOnboarding() {
     // Validate postal code against country zones
     const zone = validPostalZones[data.country];
     if (zone && !zone.pattern.test(data.postalCode.trim())) {
-      setPostalError(`Delivery is not available in your postal zone. ${zone.description}`);
+      // Redirect to Not Eligible page with context
+      navigate('/not-eligible', { 
+        state: { 
+          reason: 'postal',
+          country: countries.find(c => c.code === data.country)?.name
+        } 
+      });
       return;
     }
     setPostalError(null);

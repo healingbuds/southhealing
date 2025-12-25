@@ -36,7 +36,10 @@ async function signPayload(payload: string, privateKey: string): Promise<string>
   }
 }
 
-// Make authenticated request to Dr Green Dapp API
+// API timeout in milliseconds (20 seconds)
+const API_TIMEOUT_MS = 20000;
+
+// Make authenticated request to Dr Green Dapp API with timeout
 async function drGreenRequest(
   endpoint: string,
   method: string,
@@ -61,13 +64,27 @@ async function drGreenRequest(
   const url = `${DRGREEN_API_URL}${endpoint}`;
   console.log(`Dr Green API request: ${method} ${url}`);
   
-  const response = await fetch(url, {
-    method,
-    headers,
-    body: payload || undefined,
-  });
+  // Create abort controller for timeout
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
   
-  return response;
+  try {
+    const response = await fetch(url, {
+      method,
+      headers,
+      body: payload || undefined,
+      signal: controller.signal,
+    });
+    
+    clearTimeout(timeoutId);
+    return response;
+  } catch (error: unknown) {
+    clearTimeout(timeoutId);
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error('API request timed out. Please try again.');
+    }
+    throw error;
+  }
 }
 
 serve(async (req) => {

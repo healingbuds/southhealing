@@ -27,6 +27,7 @@ const Traceability = lazy(() => import("./pages/Traceability"));
 const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
 const TermsOfService = lazy(() => import("./pages/TermsOfService"));
 const NotFound = lazy(() => import("./pages/NotFound"));
+const NotEligible = lazy(() => import("./pages/NotEligible"));
 const Auth = lazy(() => import("./pages/Auth"));
 const Shop = lazy(() => import("./pages/Shop"));
 const ShopRegister = lazy(() => import("./pages/ShopRegister"));
@@ -54,6 +55,7 @@ const AnimatedRoutes = () => {
           <Route path="/about" element={<AboutUs />} />
           <Route path="/conditions" element={<Conditions />} />
           <Route path="/traceability" element={<Traceability />} />
+          <Route path="/not-eligible" element={<NotEligible />} />
           <Route path="/auth" element={<Auth />} />
           
           {/* Patient Portal */}
