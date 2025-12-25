@@ -9,8 +9,8 @@
  * - "white": White version for dark backgrounds
  */
 
-import hbIconGreen from "@/assets/hb-icon-green.png";
-import hbIconWhite from "@/assets/hb-icon.png";
+import hbIconGreen from "@/assets/hb-icon-teal.png";
+import hbIconWhite from "@/assets/hb-icon-white-new.png";
 import { cn } from "@/lib/utils";
 
 interface HBIconProps {
