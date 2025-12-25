@@ -121,25 +121,29 @@ const NavigationOverlay = ({
     <AnimatePresence>
       {isOpen && (
         <>
-          {/* Backdrop - solid opaque to completely block background */}
+          {/* Backdrop - smooth fade with blur */}
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.15 }}
-            className="xl:hidden fixed inset-0 z-[9998]"
-            style={{ backgroundColor: 'rgba(0, 0, 0, 0.98)' }}
+            initial={{ opacity: 0, backdropFilter: 'blur(0px)' }}
+            animate={{ opacity: 1, backdropFilter: 'blur(8px)' }}
+            exit={{ opacity: 0, backdropFilter: 'blur(0px)' }}
+            transition={{ duration: 0.3, ease: 'easeOut' }}
+            className="xl:hidden fixed inset-0 z-[9998] bg-black/90"
             onClick={onClose}
             aria-hidden="true"
           />
           
-          {/* Menu Surface - highest z-index, owns entire viewport */}
+          {/* Menu Surface - smooth slide-in with spring physics */}
           <motion.nav 
             ref={focusTrapRef as React.RefObject<HTMLElement>}
-            initial={{ opacity: 0, x: '100%' }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: '100%' }}
-            transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+            initial={{ opacity: 0, x: '100%', scale: 0.98 }}
+            animate={{ opacity: 1, x: 0, scale: 1 }}
+            exit={{ opacity: 0, x: '100%', scale: 0.98 }}
+            transition={{ 
+              type: "spring",
+              stiffness: 300,
+              damping: 30,
+              opacity: { duration: 0.2 }
+            }}
             className="xl:hidden fixed inset-0 z-[9999] flex flex-col"
             style={{ 
               backgroundColor: 'hsl(178 35% 22%)',
