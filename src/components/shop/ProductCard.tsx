@@ -15,9 +15,8 @@ interface ProductCardProps {
 }
 
 const dataSourceConfig: Record<DataSource, { icon: typeof Database; label: string; color: string }> = {
-  local: { icon: Database, label: 'Local DB', color: 'bg-emerald-500/20 text-emerald-300 border-emerald-400/30' },
   api: { icon: Cloud, label: 'Dr Green API', color: 'bg-sky-500/20 text-sky-300 border-sky-400/30' },
-  fallback: { icon: AlertCircle, label: 'Fallback', color: 'bg-amber-500/20 text-amber-300 border-amber-400/30' },
+  none: { icon: AlertCircle, label: 'No Data', color: 'bg-amber-500/20 text-amber-300 border-amber-400/30' },
 };
 
 export function ProductCard({ product, onViewDetails, showDataSource = false }: ProductCardProps) {
@@ -90,7 +89,7 @@ export function ProductCard({ product, onViewDetails, showDataSource = false }: 
   };
 
   const categoryStyles = getCategoryStyles(product.category);
-  const sourceConfig = dataSourceConfig[product.dataSource || 'fallback'];
+  const sourceConfig = dataSourceConfig[product.dataSource || 'api'];
   const SourceIcon = sourceConfig.icon;
 
   const getButtonContent = () => {

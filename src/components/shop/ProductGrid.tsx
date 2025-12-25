@@ -27,14 +27,13 @@ import { useToast } from '@/hooks/use-toast';
 const categories = ['All', 'Sativa', 'Indica', 'Hybrid', 'CBD'];
 
 const dataSourceInfo: Record<DataSource, { icon: typeof Database; label: string; color: string }> = {
-  local: { icon: Database, label: 'Local Database', color: 'text-emerald-400' },
   api: { icon: Cloud, label: 'Dr Green API', color: 'text-sky-400' },
-  fallback: { icon: AlertCircle, label: 'Fallback Data', color: 'text-amber-400' },
+  none: { icon: AlertCircle, label: 'No Data', color: 'text-amber-400' },
 };
 
 export function ProductGrid() {
   const { countryCode } = useShop();
-  const { products, isLoading, dataSource, syncFromApi, refetch } = useProducts(countryCode);
+  const { products, isLoading, error, dataSource, syncFromApi, refetch } = useProducts(countryCode);
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
@@ -299,6 +298,33 @@ export function ProductGrid() {
             </div>
           ))}
         </div>
+      ) : products.length === 0 && error ? (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="text-center py-12"
+        >
+          <AlertCircle className="mx-auto h-12 w-12 text-destructive/50 mb-4" />
+          <h3 className="text-lg font-medium mb-2">Unable to Load Products</h3>
+          <p className="text-muted-foreground mb-4">
+            {error}
+          </p>
+          <Button variant="outline" onClick={refetch}>
+            Try Again
+          </Button>
+        </motion.div>
+      ) : products.length === 0 && !error ? (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="text-center py-12"
+        >
+          <Leaf className="mx-auto h-12 w-12 text-muted-foreground/50 mb-4" />
+          <h3 className="text-lg font-medium mb-2">No Products Available</h3>
+          <p className="text-muted-foreground mb-4">
+            There are currently no products available in your region.
+          </p>
+        </motion.div>
       ) : filteredProducts.length === 0 ? (
         <motion.div
           initial={{ opacity: 0 }}
@@ -306,7 +332,7 @@ export function ProductGrid() {
           className="text-center py-12"
         >
           <Leaf className="mx-auto h-12 w-12 text-muted-foreground/50 mb-4" />
-          <h3 className="text-lg font-medium mb-2">No products found</h3>
+          <h3 className="text-lg font-medium mb-2">No Products Found</h3>
           <p className="text-muted-foreground mb-4">
             Try adjusting your search or filter criteria.
           </p>
