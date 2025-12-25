@@ -21,6 +21,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useShop } from "@/context/ShopContext";
 import heroVideo from "/hero-video.mp4";
 import hbLogoTeal from "@/assets/hb-logo-teal.png";
+import hbIconCta from "@/assets/hb-icon-cta.webp";
 
 const eligibilitySteps = [
   { step: 1, title: "Complete Assessment", description: "Fill out our secure medical questionnaire" },
@@ -323,21 +324,13 @@ const Index = () => {
                   viewport={{ once: true }}
                 >
                   <motion.img 
-                    src={hbLogoTeal} 
+                    src={hbIconCta} 
                     alt="Healing Buds" 
-                    className="mx-auto mb-6 h-24 w-auto object-contain drop-shadow-[0_0_20px_hsl(var(--primary)/0.4)]"
-                    animate={{ 
-                      filter: [
-                        "drop-shadow(0 0 15px hsl(var(--primary)/0.3))",
-                        "drop-shadow(0 0 25px hsl(var(--primary)/0.5))",
-                        "drop-shadow(0 0 15px hsl(var(--primary)/0.3))"
-                      ]
-                    }}
-                    transition={{ 
-                      duration: 3, 
-                      repeat: Infinity, 
-                      ease: "easeInOut" 
-                    }}
+                    className="mx-auto mb-6 h-28 w-auto object-contain"
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    whileInView={{ opacity: 1, scale: 1 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.5 }}
                   />
                   <h2 className="font-display text-3xl md:text-4xl font-bold text-foreground mb-4">
                     Ready to Get Started?
