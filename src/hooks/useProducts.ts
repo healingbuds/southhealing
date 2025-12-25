@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
-export type DataSource = 'local' | 'api' | 'fallback';
+export type DataSource = 'api' | 'none';
 
 export interface Product {
   id: string;
@@ -19,116 +19,8 @@ export interface Product {
   dataSource: DataSource;
 }
 
-// Real Dr Green strain data with verified S3 images (fallback only)
+// S3 base URL for strain images
 const S3_BASE = 'https://prod-profiles-backend.s3.amazonaws.com/';
-
-const mockProducts: Product[] = [
-  {
-    id: 'drg-caribbean-breeze',
-    name: 'Caribbean Breeze',
-    description: 'Tropical flavors of pineapple, mango, and citrus. Energizing, uplifting, and mentally clear. Great for daytime use, combats fatigue and stress.',
-    thcContent: 22.0,
-    cbdContent: 0.5,
-    retailPrice: 14.00,
-    availability: true,
-    stock: 50,
-    imageUrl: `${S3_BASE}7f12e541-6ffd-4bc1-aa22-8ad388afbe8c-caribbean-breeze-strain.png`,
-    effects: ['Energizing', 'Uplifting', 'Clear-headed', 'Focus'],
-    terpenes: ['Limonene', 'Pinene', 'Terpinolene'],
-    category: 'Sativa',
-    dataSource: 'fallback',
-  },
-  {
-    id: 'drg-candy-pave',
-    name: 'Candy Pave',
-    description: 'Sweet candy, floral, creamy flavors with gas undertones. Uplifting euphoria leading to heavy relaxation. Ideal for nighttime and experienced users.',
-    thcContent: 28.0,
-    cbdContent: 0.3,
-    retailPrice: 16.00,
-    availability: true,
-    stock: 35,
-    imageUrl: `${S3_BASE}88b16c0b-fe9b-4585-9aa2-6c52601645fd-E85.png`,
-    effects: ['Euphoric', 'Relaxing', 'Heavy', 'Sedating'],
-    terpenes: ['Caryophyllene', 'Limonene', 'Myrcene'],
-    category: 'Indica',
-    dataSource: 'fallback',
-  },
-  {
-    id: 'drg-nfs-12',
-    name: 'NFS 12',
-    description: 'Piney, earthy aroma with diesel and spice. Heavy head buzz with strong body sedation. Best for nighttime use and chronic pain relief.',
-    thcContent: 30.0,
-    cbdContent: 0.2,
-    retailPrice: 18.00,
-    availability: true,
-    stock: 20,
-    imageUrl: `${S3_BASE}2cd72ff7-bb9c-45c8-8e6e-7729def59248-nfsheeshjpg.png`,
-    effects: ['Sedating', 'Pain Relief', 'Heavy Buzz', 'Relaxing'],
-    terpenes: ['Myrcene', 'Caryophyllene', 'Linalool'],
-    category: 'Indica',
-    dataSource: 'fallback',
-  },
-  {
-    id: 'drg-blockberry',
-    name: 'BlockBerry',
-    description: 'Berry, vanilla, and citrus aromas. Happy, clear-headed high with functional relaxation. Good for social settings or creative work.',
-    thcContent: 20.0,
-    cbdContent: 1.0,
-    retailPrice: 14.00,
-    availability: true,
-    stock: 45,
-    imageUrl: `${S3_BASE}ecf860f8-bcea-4f0b-b5fa-0c17fe49fa42-Blockberry.png`,
-    effects: ['Happy', 'Clear-headed', 'Creative', 'Social'],
-    terpenes: ['Myrcene', 'Pinene', 'Caryophyllene'],
-    category: 'Hybrid',
-    dataSource: 'fallback',
-  },
-  {
-    id: 'drg-femme-fatale',
-    name: 'Femme Fatale',
-    description: 'Grape, tropical fruits, pear, and berry flavors. Smooth, calming experience. Great for light evening use without overwhelming sedation.',
-    thcContent: 19.0,
-    cbdContent: 2.0,
-    retailPrice: 15.00,
-    availability: true,
-    stock: 30,
-    imageUrl: `${S3_BASE}33eac80b-58c4-46d3-a82b-b70c875d333f-cakes%20n%20cream.png`,
-    effects: ['Calming', 'Smooth', 'Relaxing', 'Evening'],
-    terpenes: ['Linalool', 'Myrcene', 'Caryophyllene'],
-    category: 'Indica',
-    dataSource: 'fallback',
-  },
-  {
-    id: 'drg-blue-zushi',
-    name: 'Blue Zushi',
-    description: 'Fruit, mint, and fuel terpene profile. Euphoric uplift transitioning to calm relaxation. Ideal for creative activities and stress relief.',
-    thcContent: 25.0,
-    cbdContent: 0.5,
-    retailPrice: 17.00,
-    availability: true,
-    stock: 25,
-    imageUrl: `${S3_BASE}39a46b1f-ae7b-4677-b5c8-11b301d34de1-Blue%20Zushi.png`,
-    effects: ['Euphoric', 'Creative', 'Stress Relief', 'Calming'],
-    terpenes: ['Limonene', 'Caryophyllene', 'Myrcene'],
-    category: 'Hybrid',
-    dataSource: 'fallback',
-  },
-  {
-    id: 'drg-peanut-butter-breath',
-    name: 'Peanut Butter Breath',
-    description: 'Nutty, earthy flavors. Cerebral lift followed by full body relaxation. Excellent for appetite loss, stress, nausea, and insomnia.',
-    thcContent: 24.0,
-    cbdContent: 0.8,
-    retailPrice: 16.00,
-    availability: true,
-    stock: 40,
-    imageUrl: `${S3_BASE}56e1c80b-3670-4b76-a9bf-8bd1c9859966-Peanut-Butter-Breath-Main.png`,
-    effects: ['Relaxing', 'Appetite', 'Sleep Aid', 'Calming'],
-    terpenes: ['Caryophyllene', 'Limonene', 'Linalool'],
-    category: 'Hybrid',
-    dataSource: 'fallback',
-  },
-];
 
 // Map Alpha-2 to Alpha-3 country codes for Dr Green API
 const countryCodeMap: Record<string, string> = {
@@ -138,20 +30,33 @@ const countryCodeMap: Record<string, string> = {
   GB: 'GBR',
 };
 
+// Supported countries for product display
+const SUPPORTED_COUNTRIES = ['PT', 'GB', 'ZA', 'TH'];
+
 export function useProducts(countryCode: string = 'PT') {
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [dataSource, setDataSource] = useState<DataSource>('fallback');
+  const [dataSource, setDataSource] = useState<DataSource>('none');
 
   const fetchProducts = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
+    // Validate country code
+    if (!SUPPORTED_COUNTRIES.includes(countryCode)) {
+      console.warn(`Unsupported country code: ${countryCode}`);
+      setProducts([]);
+      setDataSource('none');
+      setError('Products are not available in your region');
+      setIsLoading(false);
+      return;
+    }
+
     const alpha3Code = countryCodeMap[countryCode] || 'PRT';
     
     try {
-      // STEP 1: Try Dr Green API first (primary source)
+      // Fetch strains exclusively from Dr Green API
       console.log(`Fetching strains from Dr Green API for country: ${alpha3Code}`);
       
       const { data, error: fnError } = await supabase.functions.invoke('drgreen-proxy', {
@@ -254,52 +159,24 @@ export function useProducts(countryCode: string = 'PT') {
       // Log API error if any
       if (fnError) {
         console.warn('Dr Green API error:', fnError);
+        setError('Unable to fetch products from the API');
       } else if (!data?.success) {
         console.warn('Dr Green API returned unsuccessful response:', data);
+        setError('API returned an unsuccessful response');
       } else {
-        console.warn('Dr Green API returned no strains');
+        console.warn('Dr Green API returned no strains for this country');
+        setError(null); // No error, just no products
       }
 
-      // STEP 2: Fallback to local database
-      console.log('Falling back to local database...');
-      const { data: localStrains, error: dbError } = await supabase
-        .from('strains')
-        .select('*')
-        .eq('is_archived', false)
-        .order('name');
-
-      if (!dbError && localStrains && localStrains.length > 0) {
-        console.log(`Found ${localStrains.length} strains in local database`);
-        const transformedProducts: Product[] = localStrains.map((strain) => ({
-          id: strain.id,
-          name: strain.name,
-          description: strain.description || '',
-          thcContent: strain.thc_content || 0,
-          cbdContent: strain.cbd_content || 0,
-          retailPrice: strain.retail_price || 0,
-          availability: strain.availability,
-          stock: strain.stock || 0,
-          imageUrl: strain.image_url || '/placeholder.svg',
-          effects: strain.feelings || [],
-          terpenes: strain.flavors || [],
-          category: strain.type || 'Hybrid',
-          dataSource: 'local' as DataSource,
-        }));
-        setProducts(transformedProducts);
-        setDataSource('local');
-        setIsLoading(false);
-        return;
-      }
-
-      // STEP 3: Use fallback mock data
-      console.log('No data from API or local DB, using fallback data');
-      setProducts(mockProducts);
-      setDataSource('fallback');
+      // No fallback - set empty products
+      setProducts([]);
+      setDataSource('none');
       
     } catch (err) {
       console.error('Error fetching products:', err);
-      setProducts(mockProducts);
-      setDataSource('fallback');
+      setProducts([]);
+      setDataSource('none');
+      setError('Failed to connect to the product service');
     } finally {
       setIsLoading(false);
     }
