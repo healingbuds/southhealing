@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { buildLegacyClientPayload } from '@/lib/drgreenApi';
 import {
   User,
   MapPin,
@@ -421,17 +422,33 @@ export function ClientOnboarding() {
       let kycLink = null;
       let apiSuccess = false;
 
+      // Build legacy-compatible payload
+      const legacyPayload = buildLegacyClientPayload({
+        personal: formData.personal as {
+          firstName: string;
+          lastName: string;
+          email: string;
+          phone: string;
+          dateOfBirth: string;
+          gender?: string;
+        },
+        address: formData.address as {
+          street: string;
+          city: string;
+          postalCode: string;
+          country: string;
+          state?: string;
+        },
+        business: formData.business,
+        medicalHistory: formData.medicalHistory || {},
+      });
+
       // Try to call edge function to create client (non-blocking)
       try {
         const { data: result, error } = await supabase.functions.invoke('drgreen-proxy', {
           body: {
-            action: 'create-client',
-            data: {
-              personal: formData.personal,
-              address: formData.address,
-              medicalHistory: formData.medicalHistory,
-              medicalRecord: data,
-            },
+            action: 'create-client-legacy',
+            payload: legacyPayload,
           },
         });
 

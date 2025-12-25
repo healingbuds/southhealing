@@ -391,7 +391,7 @@ export function buildLegacyClientPayload(formData: {
     state?: string;
   };
   business?: {
-    isBusiness: boolean;
+    isBusiness?: boolean;
     businessType?: string;
     businessName?: string;
     businessAddress1?: string;
@@ -401,7 +401,7 @@ export function buildLegacyClientPayload(formData: {
     businessCountryCode?: string;
     businessPostalCode?: string;
   };
-  medicalHistory: {
+  medicalHistory?: {
     medicalHistory0?: boolean;
     medicalHistory1?: boolean;
     medicalHistory2?: boolean;
@@ -432,6 +432,8 @@ export function buildLegacyClientPayload(formData: {
     return hasNone ? defaultValue : arr.map(v => v.toLowerCase());
   };
   
+  const mh = formData.medicalHistory || {};
+  
   const payload: LegacyClientPayload = {
     firstName: formData.personal.firstName,
     lastName: formData.personal.lastName,
@@ -451,28 +453,28 @@ export function buildLegacyClientPayload(formData: {
     medicalRecord: {
       dob: formData.personal.dateOfBirth, // Already in YYYY-MM-DD format
       gender: formData.personal.gender || 'prefer_not_to_say',
-      medicalHistory0: formData.medicalHistory.medicalHistory0 ?? false,
-      medicalHistory1: formData.medicalHistory.medicalHistory1 ?? false,
-      medicalHistory2: formData.medicalHistory.medicalHistory2 ?? false,
-      medicalHistory3: formData.medicalHistory.medicalHistory3 ?? false,
-      medicalHistory4: formData.medicalHistory.medicalHistory4 ?? false,
-      medicalHistory5: normalizeArrayField(formData.medicalHistory.medicalHistory5, ['none']),
-      medicalHistory6: formData.medicalHistory.medicalHistory6 ?? false,
-      medicalHistory7: normalizeArrayField(formData.medicalHistory.medicalHistory7, ['none']),
+      medicalHistory0: mh.medicalHistory0 ?? false,
+      medicalHistory1: mh.medicalHistory1 ?? false,
+      medicalHistory2: mh.medicalHistory2 ?? false,
+      medicalHistory3: mh.medicalHistory3 ?? false,
+      medicalHistory4: mh.medicalHistory4 ?? false,
+      medicalHistory5: normalizeArrayField(mh.medicalHistory5, ['none']),
+      medicalHistory6: mh.medicalHistory6 ?? false,
+      medicalHistory7: normalizeArrayField(mh.medicalHistory7, ['none']),
       medicalHistory7Relation: 'none',
       medicalHistory8: false,
-      medicalHistory9: formData.medicalHistory.medicalHistory9 ?? false,
-      medicalHistory10: formData.medicalHistory.medicalHistory10 ?? false,
-      medicalHistory11: formData.medicalHistory.medicalHistory11 ?? '0',
-      medicalHistory12: formData.medicalHistory.medicalHistory12 ?? false,
-      medicalHistory13: formData.medicalHistory.medicalHistory13?.toLowerCase() || 'never',
-      medicalHistory14: normalizeArrayField(formData.medicalHistory.medicalHistory14, ['never']),
+      medicalHistory9: mh.medicalHistory9 ?? false,
+      medicalHistory10: mh.medicalHistory10 ?? false,
+      medicalHistory11: mh.medicalHistory11 ?? '0',
+      medicalHistory12: mh.medicalHistory12 ?? false,
+      medicalHistory13: mh.medicalHistory13?.toLowerCase() || 'never',
+      medicalHistory14: normalizeArrayField(mh.medicalHistory14, ['never']),
       medicalHistory15: 'none',
       medicalHistory16: false,
-      medicalConditions: formData.medicalHistory.medicalConditions,
-      otherMedicalCondition: formData.medicalHistory.otherMedicalCondition,
-      medicinesTreatments: formData.medicalHistory.medicinesTreatments,
-      otherMedicalTreatments: formData.medicalHistory.otherMedicalTreatments,
+      medicalConditions: mh.medicalConditions,
+      otherMedicalCondition: mh.otherMedicalCondition,
+      medicinesTreatments: mh.medicinesTreatments,
+      otherMedicalTreatments: mh.otherMedicalTreatments,
     },
   };
   
