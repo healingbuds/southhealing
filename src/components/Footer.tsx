@@ -52,7 +52,7 @@ const Footer = () => {
               {/* Patient */}
               <div>
               <h4 className="font-jakarta font-semibold text-sm uppercase tracking-wider mb-5 text-white/90 flex items-center gap-2">
-                  <HBIcon size="sm" variant="green" className="flex-shrink-0" />
+                  <HBIcon size="sm" variant="white" className="flex-shrink-0" />
                   Patient
                 </h4>
                 <ul className="space-y-3">
@@ -82,7 +82,7 @@ const Footer = () => {
               {/* Support */}
               <div>
               <h4 className="font-jakarta font-semibold text-sm uppercase tracking-wider mb-5 text-white/90 flex items-center gap-2">
-                  <HBIcon size="sm" variant="green" className="flex-shrink-0" />
+                  <HBIcon size="sm" variant="white" className="flex-shrink-0" />
                   Support
                 </h4>
                 <ul className="space-y-3">
@@ -107,7 +107,7 @@ const Footer = () => {
               {/* Legal */}
               <div>
               <h4 className="font-jakarta font-semibold text-sm uppercase tracking-wider mb-5 text-white/90 flex items-center gap-2">
-                  <HBIcon size="sm" variant="green" className="flex-shrink-0" />
+                  <HBIcon size="sm" variant="white" className="flex-shrink-0" />
                   Legal
                 </h4>
                 <ul className="space-y-3">

@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useShop } from "@/context/ShopContext";
 import heroVideo from "/hero-video.mp4";
+import hbLogoTeal from "@/assets/hb-logo-teal.png";
 
 const eligibilitySteps = [
   { step: 1, title: "Complete Assessment", description: "Fill out our secure medical questionnaire" },
@@ -321,7 +322,7 @@ const Index = () => {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                 >
-                  <HBIcon size="xl" className="mx-auto mb-6" />
+                  <img src={hbLogoTeal} alt="Healing Buds" className="mx-auto mb-6 h-24 w-auto object-contain" />
                   <h2 className="font-display text-3xl md:text-4xl font-bold text-foreground mb-4">
                     Ready to Get Started?
                   </h2>
