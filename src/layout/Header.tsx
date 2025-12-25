@@ -123,17 +123,17 @@ const Header = ({ onMenuStateChange }: HeaderProps) => {
       <header 
         ref={headerRef}
         className={cn(
-          "fixed top-0 left-0 right-0 sm:top-3 sm:left-3 sm:right-3 z-50",
-          "backdrop-blur-2xl rounded-none sm:rounded-2xl transition-all duration-700 ease-out",
-          "border-b sm:border",
+          "fixed top-4 left-4 right-4 sm:top-5 sm:left-5 sm:right-5 md:top-6 md:left-6 md:right-6 z-50",
+          "backdrop-blur-2xl rounded-2xl transition-all duration-700 ease-out",
+          "border",
           scrolled 
-            ? "shadow-2xl shadow-black/20 border-white/25 sm:scale-[0.985]" 
-            : "shadow-lg shadow-black/10 border-white/15"
+            ? "shadow-2xl shadow-black/30 border-white/30 scale-[0.99]" 
+            : "shadow-xl shadow-black/20 border-white/20"
         )}
         style={{ 
           backgroundColor: scrolled 
-            ? 'hsla(178, 35%, 18%, 0.95)' 
-            : 'hsla(178, 35%, 22%, 0.85)',
+            ? 'hsla(178, 35%, 16%, 0.98)' 
+            : 'hsla(178, 35%, 20%, 0.9)',
           transition: 'background-color 0.7s ease-out, transform 0.7s ease-out, box-shadow 0.7s ease-out'
         }}
       >
