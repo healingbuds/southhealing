@@ -10,7 +10,9 @@ import {
   AlertTriangle,
   Package,
   Clock,
-  ArrowLeft
+  ArrowLeft,
+  Calendar,
+  Zap
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -292,7 +294,7 @@ const AdminStrainSync = () => {
             </div>
 
             {/* Summary Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-8">
               <Card className="bg-card/50 backdrop-blur-sm border-border/50">
                 <CardContent className="pt-6">
                   <div className="flex items-center gap-3">
@@ -334,7 +336,57 @@ const AdminStrainSync = () => {
                   </div>
                 </CardContent>
               </Card>
+
+              <Card className="bg-card/50 backdrop-blur-sm border-border/50 border-cyan-500/20">
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-cyan-500/10">
+                      <Zap className="h-5 w-5 text-cyan-500" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Auto-Sync</p>
+                      <p className="text-lg font-bold text-foreground">Daily 6 AM UTC</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
+
+            {/* Scheduled Jobs Info */}
+            <Card className="bg-gradient-to-r from-cyan-500/5 to-primary/5 border-cyan-500/20 mb-8">
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-5 w-5 text-cyan-500" />
+                  <CardTitle className="text-lg">Scheduled Auto-Sync</CardTitle>
+                </div>
+                <CardDescription>
+                  Strains are automatically synced from the Dr. Green API daily
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="p-3 rounded-lg bg-background/50">
+                    <p className="text-xs text-muted-foreground mb-1">🇵🇹 Portugal</p>
+                    <p className="font-mono text-sm">06:00 UTC</p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-background/50">
+                    <p className="text-xs text-muted-foreground mb-1">🇬🇧 United Kingdom</p>
+                    <p className="font-mono text-sm">06:05 UTC</p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-background/50">
+                    <p className="text-xs text-muted-foreground mb-1">🇿🇦 South Africa</p>
+                    <p className="font-mono text-sm">06:10 UTC</p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-background/50">
+                    <p className="text-xs text-muted-foreground mb-1">🇹🇭 Thailand</p>
+                    <p className="font-mono text-sm">06:15 UTC</p>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground mt-4">
+                  Jobs are staggered by 5 minutes to avoid API rate limits. Manual sync is always available above.
+                </p>
+              </CardContent>
+            </Card>
 
             {/* Country Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
