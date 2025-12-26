@@ -26,7 +26,7 @@ export function Cart() {
     drGreenClient,
     isLoading,
     countryCode,
-    convertFromZAR,
+    convertFromEUR,
   } = useShop();
 
   const getEligibilityStatus = () => {
@@ -99,7 +99,7 @@ export function Cart() {
                         {item.strain_name}
                       </h4>
                       <p className="text-sm text-muted-foreground">
-                        {formatPrice(convertFromZAR(item.unit_price), countryCode)} / gram
+                        {formatPrice(convertFromEUR(item.unit_price), countryCode)} / gram
                       </p>
                       
                       {/* Quantity controls */}
@@ -141,7 +141,7 @@ export function Cart() {
                         <Trash2 className="h-4 w-4" />
                       </Button>
                       <span className="font-semibold text-foreground">
-                        {formatPrice(convertFromZAR(item.unit_price * item.quantity), countryCode)}
+                        {formatPrice(convertFromEUR(item.unit_price * item.quantity), countryCode)}
                       </span>
                     </div>
                   </motion.div>

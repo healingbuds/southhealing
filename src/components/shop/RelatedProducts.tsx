@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Product } from '@/hooks/useProducts';
 import { formatPrice } from '@/lib/currency';
+import { useShop } from '@/context/ShopContext';
 
 interface RelatedProductsProps {
   products: Product[];
@@ -16,6 +17,7 @@ interface RelatedProductsProps {
 export function RelatedProducts({ products, currentProductId, countryCode }: RelatedProductsProps) {
   const navigate = useNavigate();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const { convertFromEUR } = useShop();
 
   // Filter out current product and get available products
   const relatedProducts = products.filter(p => p.id !== currentProductId);
@@ -133,7 +135,7 @@ export function RelatedProducts({ products, currentProductId, countryCode }: Rel
                   {product.name}
                 </h4>
                 <p className="text-xs sm:text-sm font-semibold text-primary">
-                  {formatPrice(product.retailPrice, countryCode)}
+                  {formatPrice(convertFromEUR(product.retailPrice), countryCode)}
                 </p>
               </button>
             </motion.div>

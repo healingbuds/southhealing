@@ -26,7 +26,7 @@ import { RelatedProducts } from '@/components/shop/RelatedProducts';
 export default function CultivarDetail() {
   const { cultivarId } = useParams<{ cultivarId: string }>();
   const navigate = useNavigate();
-  const { addToCart, isEligible, drGreenClient, countryCode } = useShop();
+  const { addToCart, isEligible, drGreenClient, countryCode, convertFromEUR } = useShop();
   const { products, isLoading } = useProducts(countryCode);
   const { toast } = useToast();
   const [quantity, setQuantity] = useState(1);
@@ -261,10 +261,10 @@ export default function CultivarDetail() {
                   </p>
                 </div>
 
-                {/* Price */}
+                {/* Price - converted from EUR to user's currency */}
                 <div className="flex items-baseline gap-3">
                   <span className="text-4xl font-bold text-primary">
-                    {formatPrice(product.retailPrice, countryCode)}
+                    {formatPrice(convertFromEUR(product.retailPrice), countryCode)}
                   </span>
                   <span className="text-lg text-muted-foreground">per gram</span>
                 </div>
@@ -330,7 +330,7 @@ export default function CultivarDetail() {
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">Total:</span>
                     <span className="text-3xl font-bold text-primary">
-                      {formatPrice(product.retailPrice * quantity, countryCode)}
+                      {formatPrice(convertFromEUR(product.retailPrice * quantity), countryCode)}
                     </span>
                   </div>
 

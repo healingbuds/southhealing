@@ -21,7 +21,7 @@ interface CultivarQuickViewProps {
 
 export function CultivarQuickView({ product, onClose }: CultivarQuickViewProps) {
   const [quantity, setQuantity] = useState(1);
-  const { addToCart, isEligible, drGreenClient, countryCode } = useShop();
+  const { addToCart, isEligible, drGreenClient, countryCode, convertFromEUR } = useShop();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -182,10 +182,10 @@ export function CultivarQuickView({ product, onClose }: CultivarQuickViewProps) 
                   </Button>
                 </div>
 
-                {/* Price */}
+                {/* Price - converted from EUR to user's currency */}
                 <div className="flex items-baseline gap-2 mb-4">
                   <span className="text-3xl font-bold text-primary">
-                    {formatPrice(product.retailPrice, countryCode)}
+                    {formatPrice(convertFromEUR(product.retailPrice), countryCode)}
                   </span>
                   <span className="text-sm text-muted-foreground">per gram</span>
                 </div>
@@ -297,7 +297,7 @@ export function CultivarQuickView({ product, onClose }: CultivarQuickViewProps) 
                   <div className="flex items-center justify-between text-lg">
                     <span className="text-muted-foreground">Total:</span>
                     <span className="text-2xl font-bold text-primary">
-                      {formatPrice(product.retailPrice * quantity, countryCode)}
+                      {formatPrice(convertFromEUR(product.retailPrice * quantity), countryCode)}
                     </span>
                   </div>
 

@@ -49,7 +49,7 @@ const getStatusVariant = (status: string): 'default' | 'secondary' | 'destructiv
 const Orders = () => {
   const navigate = useNavigate();
   const { orders, isLoading, reorder } = useOrderTracking();
-  const { drGreenClient, countryCode, setIsCartOpen, isEligible } = useShop();
+  const { drGreenClient, countryCode, setIsCartOpen, isEligible, convertFromEUR } = useShop();
 
   const handleReorder = async (order: typeof orders[0]) => {
     await reorder(order);
@@ -146,7 +146,7 @@ const Orders = () => {
                               </div>
                               <div className="flex items-center gap-3">
                                 <p className="font-semibold text-foreground text-lg">
-                                  {formatPrice(order.total_amount, countryCode)}
+                                  {formatPrice(convertFromEUR(order.total_amount), countryCode)}
                                 </p>
                               </div>
                             </div>
@@ -160,7 +160,7 @@ const Orders = () => {
                                       <div key={idx} className="flex justify-between text-sm">
                                         <span className="text-foreground">{item.strain_name}</span>
                                         <span className="text-muted-foreground">
-                                          {item.quantity}g × {formatPrice(item.unit_price, countryCode)}
+                                          {item.quantity}g × {formatPrice(convertFromEUR(item.unit_price), countryCode)}
                                         </span>
                                       </div>
                                     ))}

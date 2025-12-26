@@ -10,7 +10,7 @@ interface CartItem {
   strain_id: string;
   strain_name: string;
   quantity: number;
-  unit_price: number; // Always in ZAR from API
+  unit_price: number; // Always in EUR from Dr Green API
 }
 
 interface DrGreenClient {
@@ -52,6 +52,8 @@ interface ShopContextType {
   setCountryCode: (code: string) => void;
   // Exchange rates
   exchangeRates: ExchangeRatesData | null;
+  convertFromEUR: (amount: number, toCountry?: string) => number;
+  /** @deprecated Use convertFromEUR instead - API returns EUR prices */
   convertFromZAR: (amount: number, toCountry?: string) => number;
   ratesLastUpdated: Date | null;
 }
@@ -95,13 +97,19 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
   const cartTotal = cart.reduce((sum, item) => sum + item.quantity * item.unit_price, 0);
   
-  // Convert cart total to user's currency
-  const convertFromZAR = useCallback((amount: number, toCountry?: string): number => {
+  // Convert cart total to user's currency (API returns prices in EUR)
+  const convertFromEUR = useCallback((amount: number, toCountry?: string): number => {
     const targetCountry = toCountry || countryCode;
-    return convertPrice(amount, 'ZAR', targetCountry);
+    return convertPrice(amount, 'EUR', targetCountry);
   }, [convertPrice, countryCode]);
 
-  const cartTotalConverted = convertFromZAR(cartTotal);
+  // Keep legacy function for backwards compatibility
+  const convertFromZAR = useCallback((amount: number, toCountry?: string): number => {
+    const targetCountry = toCountry || countryCode;
+    return convertPrice(amount, 'EUR', targetCountry); // Actually converts from EUR now
+  }, [convertPrice, countryCode]);
+
+  const cartTotalConverted = convertFromEUR(cartTotal);
   
   const isEligible = drGreenClient?.is_kyc_verified === true && drGreenClient?.admin_approval === 'VERIFIED';
 
@@ -339,7 +347,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
         countryCode,
         setCountryCode,
         exchangeRates: rates,
-        convertFromZAR,
+        convertFromEUR,
+        convertFromZAR, // deprecated, but kept for compatibility
         ratesLastUpdated: lastUpdated,
       }}
     >

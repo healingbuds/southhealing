@@ -21,7 +21,7 @@ const dataSourceConfig: Record<DataSource, { icon: typeof Database; label: strin
 };
 
 export function ProductCard({ product, onViewDetails, showDataSource = false }: ProductCardProps) {
-  const { addToCart, isEligible, drGreenClient, countryCode, convertFromZAR, exchangeRates } = useShop();
+  const { addToCart, isEligible, drGreenClient, countryCode, convertFromEUR } = useShop();
   const navigate = useNavigate();
   const { toast } = useToast();
   const { t } = useTranslation('shop');
@@ -202,8 +202,8 @@ export function ProductCard({ product, onViewDetails, showDataSource = false }: 
             </h3>
             <div className="flex flex-col items-end shrink-0">
               <span className="text-xl font-bold text-primary">
-                {/* Convert from ZAR (API base) to user's currency */}
-                {formatPrice(convertFromZAR(product.retailPrice), countryCode)}
+                {/* Convert from EUR (API base) to user's currency */}
+                {formatPrice(convertFromEUR(product.retailPrice), countryCode)}
               </span>
               <span className="text-[10px] text-muted-foreground uppercase tracking-wide">per gram</span>
             </div>
