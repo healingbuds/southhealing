@@ -143,13 +143,13 @@ const Footer = () => {
               href="https://drgreennft.com" 
               target="_blank" 
               rel="noopener noreferrer"
-              className="opacity-30 hover:opacity-60 transition-opacity duration-300"
+              className="opacity-70 hover:opacity-100 transition-opacity duration-300"
               title="Powered by Dr. Green NFT"
             >
               <img 
                 src={drGreenLogo}
                 alt="Dr. Green NFT"
-                className="h-8 w-auto"
+                className="h-12 w-auto"
               />
             </a>
           </div>
