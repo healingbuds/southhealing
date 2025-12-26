@@ -50,6 +50,11 @@ All colors MUST be HSL.
     --highlight: 42 90% 55%;              /* Warm gold - #E5A520 */
     --highlight-soft: 42 85% 65%;         /* Softer gold for backgrounds */
     --highlight-foreground: 42 95% 12%;   /* Dark amber text on gold */
+    
+    /* Pharmaceutical Navbar Colors */
+    --navbar-forest: 168 30% 14%;         /* Deep Forest Green #1A2E2A */
+    --navbar-gold: 45 92% 45%;            /* Subtle Gold #EAB308 */
+    --navbar-separator: 0 0% 100%;        /* Pure White separator */
 
     /* Destructive - warmer amber-coral instead of harsh red/pink */
     --destructive: 15 65% 55%;
@@ -181,6 +186,11 @@ All colors MUST be HSL.
     --highlight: 42 88% 58%;
     --highlight-soft: 42 70% 25%;
     --highlight-foreground: 42 10% 95%;
+    
+    /* Pharmaceutical Navbar Colors - Dark Mode */
+    --navbar-forest: 168 30% 12%;
+    --navbar-gold: 45 92% 50%;
+    --navbar-separator: 0 0% 100%;
 
     /* Destructive - warm amber instead of harsh red */
     --destructive: 18 60% 50%;

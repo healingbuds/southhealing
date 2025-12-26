@@ -1,11 +1,12 @@
 /**
- * NavigationMenu Component
+ * NavigationMenu Component - Pharmaceutical Grade
  * 
- * Clean, modern desktop navigation with subtle hover effects.
+ * Clean, premium desktop navigation with subtle gold hover accents.
  */
 
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { FileText, ClipboardCheck, ShoppingBag, HeadphonesIcon } from "lucide-react";
 
 interface NavigationMenuProps {
   scrolled: boolean;
@@ -19,33 +20,47 @@ const NavigationMenu = ({ scrolled }: NavigationMenuProps) => {
   const isShopActive = location.pathname === '/shop' || location.pathname.startsWith('/shop/');
 
   const navItems = [
-    { path: '/', label: 'Home' },
-    { path: '/eligibility', label: 'Eligibility' },
-    { path: '/shop', label: 'Dispensary', isShop: true },
-    { path: '/support', label: 'Support' },
+    { path: '/research', label: 'Research', icon: FileText },
+    { path: '/eligibility', label: 'Eligibility', icon: ClipboardCheck },
+    { path: '/shop', label: 'Products', icon: ShoppingBag, isShop: true },
+    { path: '/support', label: 'Support', icon: HeadphonesIcon },
   ];
 
   return (
     <nav className="hidden xl:flex items-center justify-center gap-1">
       {navItems.map((item) => {
         const active = item.isShop ? isShopActive : isActive(item.path);
+        const Icon = item.icon;
         
         return (
           <Link
             key={item.path}
             to={item.path}
             className={cn(
-              "relative px-4 py-2 rounded-lg font-medium transition-all duration-300",
-              "text-sm",
+              "relative px-5 py-2.5 rounded-lg font-medium transition-all duration-300",
+              "text-sm flex items-center gap-2",
+              "group",
               active
-                ? "text-white bg-white/15"
-                : "text-white/80 hover:text-white hover:bg-white/10"
+                ? "text-white bg-white/15 border-b-2 border-[#EAB308]"
+                : "text-white/85 hover:text-white hover:bg-white/10"
             )}
           >
+            <Icon className={cn(
+              "w-4 h-4 transition-colors duration-300",
+              active ? "text-[#EAB308]" : "text-white/60 group-hover:text-[#EAB308]"
+            )} />
             {item.label}
+            
+            {/* Active indicator dot */}
             {active && (
-              <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-emerald-400 rounded-full" />
+              <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-[#EAB308] rounded-full" />
             )}
+            
+            {/* Hover gold underline */}
+            <span className={cn(
+              "absolute bottom-0 left-1/2 -translate-x-1/2 h-0.5 bg-[#EAB308] transition-all duration-300",
+              active ? "w-full opacity-100" : "w-0 opacity-0 group-hover:w-3/4 group-hover:opacity-60"
+            )} />
           </Link>
         );
       })}
