@@ -1,6 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
+// Import local strain images
+import strainJar1 from '@/assets/strain-jar-1.jpg';
+import strainJar2 from '@/assets/strain-jar-2.jpg';
+import strainJar3 from '@/assets/strain-jar-3.jpg';
+import strainJar4 from '@/assets/strain-jar-4.jpg';
+import strainJar5 from '@/assets/strain-jar-5.png';
+import strainJar6 from '@/assets/strain-jar-6.png';
+
 export type DataSource = 'api' | 'none';
 
 export interface Product {
@@ -21,6 +29,42 @@ export interface Product {
 
 // S3 base URL for strain images
 const S3_BASE = 'https://prod-profiles-backend.s3.amazonaws.com/';
+
+// Local image mapping - strain name (lowercase) to local image
+const LOCAL_IMAGE_MAP: Record<string, string> = {
+  'blue zushi': strainJar1,
+  'blue-zushi': strainJar1,
+  'bluezushi': strainJar1,
+  'candy pave': strainJar3,
+  'candy-pave': strainJar3,
+  'candypave': strainJar3,
+  'caribbean breeze': strainJar4,
+  'caribbean-breeze': strainJar4,
+  'caribbeanbreeze': strainJar4,
+};
+
+// Fallback images for products without local mapping
+const FALLBACK_IMAGES = [strainJar5, strainJar6, strainJar1, strainJar2, strainJar3, strainJar4];
+
+// Get local image for a strain name, or a consistent fallback
+const getLocalImage = (strainName: string, index: number): string | null => {
+  const normalizedName = strainName.toLowerCase().trim();
+  
+  // Check for exact or partial match
+  if (LOCAL_IMAGE_MAP[normalizedName]) {
+    return LOCAL_IMAGE_MAP[normalizedName];
+  }
+  
+  // Check if any key is contained in the name
+  for (const [key, image] of Object.entries(LOCAL_IMAGE_MAP)) {
+    if (normalizedName.includes(key) || key.includes(normalizedName)) {
+      return image;
+    }
+  }
+  
+  // Return a consistent fallback based on index
+  return FALLBACK_IMAGES[index % FALLBACK_IMAGES.length];
+};
 
 // Map Alpha-2 to Alpha-3 country codes for Dr Green API
 const countryCodeMap: Record<string, string> = {
@@ -73,17 +117,22 @@ export function useProducts(countryCode: string = 'PT') {
         console.log(`Received ${data.data.strains.length} strains from Dr Green API`);
         
         // Transform API response to our Product interface
-        const transformedProducts: Product[] = data.data.strains.map((strain: any) => {
-          // Build full image URL
-          let imageUrl = '/placeholder.svg';
-          if (strain.imageUrl) {
-            imageUrl = strain.imageUrl.startsWith('http') 
-              ? strain.imageUrl 
-              : `${S3_BASE}${strain.imageUrl}`;
-          } else if (strain.image) {
-            imageUrl = strain.image.startsWith('http')
-              ? strain.image
-              : `${S3_BASE}${strain.image}`;
+        const transformedProducts: Product[] = data.data.strains.map((strain: any, index: number) => {
+          // Check for local image override first
+          const localImage = getLocalImage(strain.name, index);
+          
+          // Build full image URL (fallback if no local image)
+          let imageUrl = localImage || '/placeholder.svg';
+          if (!localImage) {
+            if (strain.imageUrl) {
+              imageUrl = strain.imageUrl.startsWith('http') 
+                ? strain.imageUrl 
+                : `${S3_BASE}${strain.imageUrl}`;
+            } else if (strain.image) {
+              imageUrl = strain.image.startsWith('http')
+                ? strain.image
+                : `${S3_BASE}${strain.image}`;
+            }
           }
 
           let effects: string[] = [];
@@ -177,9 +226,12 @@ export function useProducts(countryCode: string = 'PT') {
       if (localStrains && localStrains.length > 0) {
         console.log(`Loaded ${localStrains.length} strains from local database`);
         
-        const transformedProducts: Product[] = localStrains.map((strain) => {
-          let imageUrl = '/placeholder.svg';
-          if (strain.image_url) {
+        const transformedProducts: Product[] = localStrains.map((strain, index) => {
+          // Check for local image override first
+          const localImage = getLocalImage(strain.name, index);
+          
+          let imageUrl = localImage || '/placeholder.svg';
+          if (!localImage && strain.image_url) {
             imageUrl = strain.image_url.startsWith('http')
               ? strain.image_url
               : `${S3_BASE}${strain.image_url}`;
