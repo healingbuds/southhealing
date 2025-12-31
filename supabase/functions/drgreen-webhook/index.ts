@@ -217,6 +217,28 @@ async function sendClientEmail(
   }
 }
 
+// Helper to log KYC journey events
+async function logJourneyEvent(
+  supabase: any,
+  userId: string,
+  clientId: string,
+  eventType: string,
+  eventData: Record<string, unknown> = {}
+): Promise<void> {
+  try {
+    await supabase.from('kyc_journey_logs').insert({
+      user_id: userId,
+      client_id: clientId,
+      event_type: eventType,
+      event_source: 'drgreen-webhook',
+      event_data: eventData,
+    });
+    console.log(`[KYC Journey] Logged: ${eventType}`, eventData);
+  } catch (error) {
+    console.warn('[KYC Journey] Failed to log event:', error);
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -291,6 +313,12 @@ serve(async (req) => {
                   region,
                   payload.kycLink
                 );
+                
+                // Log journey event
+                await logJourneyEvent(supabase, clientData.user_id, payload.clientId, 'kyc.link_generated', {
+                  emailSent,
+                  linkPresent: !!payload.kycLink,
+                });
               }
               break;
             }
@@ -310,6 +338,12 @@ serve(async (req) => {
                 userName,
                 region
               );
+              
+              // Log journey event
+              await logJourneyEvent(supabase, clientData.user_id, payload.clientId, payload.event, {
+                emailSent,
+                status: 'verified',
+              });
               break;
             }
             case 'kyc.rejected':
@@ -324,6 +358,13 @@ serve(async (req) => {
                 payload.kycLink,
                 payload.rejectionReason
               );
+              
+              // Log journey event
+              await logJourneyEvent(supabase, clientData.user_id, payload.clientId, payload.event, {
+                emailSent,
+                status: 'rejected',
+                rejectionReason: payload.rejectionReason,
+              });
               break;
             }
             case 'client.approved': {
@@ -341,6 +382,12 @@ serve(async (req) => {
                 userName,
                 region
               );
+              
+              // Log journey event
+              await logJourneyEvent(supabase, clientData.user_id, payload.clientId, 'client.approved', {
+                emailSent,
+                adminApproval: 'VERIFIED',
+              });
               break;
             }
             case 'client.rejected': {
@@ -360,6 +407,13 @@ serve(async (req) => {
                 undefined,
                 payload.rejectionReason
               );
+              
+              // Log journey event
+              await logJourneyEvent(supabase, clientData.user_id, payload.clientId, 'client.rejected', {
+                emailSent,
+                adminApproval: 'REJECTED',
+                rejectionReason: payload.rejectionReason,
+              });
               break;
             }
             default:

@@ -35,6 +35,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useDrGreenApi } from "@/hooks/useDrGreenApi";
 import { BatchImageGenerator } from "@/components/admin/BatchImageGenerator";
+import { KYCJourneyViewer } from "@/components/admin/KYCJourneyViewer";
 
 interface DashboardStats {
   pendingPrescriptions: number;
@@ -590,6 +591,11 @@ const AdminDashboard = () => {
             {/* AI Image Generator */}
             <div className="mb-12">
               <BatchImageGenerator />
+            </div>
+
+            {/* KYC Journey Logs */}
+            <div className="mb-12">
+              <KYCJourneyViewer />
             </div>
 
             {/* Admin Tools */}

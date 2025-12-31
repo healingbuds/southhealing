@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -365,6 +366,40 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     console.log('[send-client-email] Email sent successfully:', data);
+
+    // Log journey event if clientId is provided
+    if (request.clientId) {
+      try {
+        const supabase = createClient(
+          Deno.env.get('SUPABASE_URL')!,
+          Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+        );
+        
+        // Get user ID from client
+        const { data: clientData } = await supabase
+          .from('drgreen_clients')
+          .select('user_id')
+          .eq('drgreen_client_id', request.clientId)
+          .single();
+        
+        if (clientData?.user_id) {
+          await supabase.from('kyc_journey_logs').insert({
+            user_id: clientData.user_id,
+            client_id: request.clientId,
+            event_type: `email.${request.type}_sent`,
+            event_source: 'send-client-email',
+            event_data: {
+              emailType: request.type,
+              region: request.region,
+              success: true,
+            },
+          });
+          console.log(`[KYC Journey] Logged: email.${request.type}_sent`);
+        }
+      } catch (logError) {
+        console.warn('[KYC Journey] Failed to log email event:', logError);
+      }
+    }
 
     return new Response(
       JSON.stringify({ success: true, messageId: data.id }),

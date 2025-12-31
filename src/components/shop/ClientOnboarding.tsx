@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { z } from 'zod';
@@ -48,6 +48,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useShop } from '@/context/ShopContext';
+import { useKycJourneyLog } from '@/hooks/useKycJourneyLog';
 
 // Age calculation helper
 const calculateAge = (dateOfBirth: string): number => {
@@ -268,6 +269,12 @@ export function ClientOnboarding() {
   const { toast } = useToast();
   const navigate = useNavigate();
   const { refreshClient } = useShop();
+  const { logEvent } = useKycJourneyLog();
+
+  // Log when registration starts
+  useEffect(() => {
+    logEvent('registration.started', 'pending', { step: 0, stepName: 'personal' });
+  }, []);
 
   const personalForm = useForm<PersonalDetails>({
     resolver: zodResolver(personalDetailsSchema),
@@ -349,6 +356,7 @@ export function ClientOnboarding() {
     const minAge = getMinimumAge(selectedCountry);
     const age = calculateAge(data.dateOfBirth);
     if (age < minAge) {
+      logEvent('registration.step_completed', 'pending', { step: 0, stepName: 'personal', blocked: true, reason: 'age' });
       // Redirect to Not Eligible page with context
       navigate('/not-eligible', { 
         state: { 
@@ -361,6 +369,7 @@ export function ClientOnboarding() {
     }
     setAgeError(null);
     setFormData((prev) => ({ ...prev, personal: data }));
+    logEvent('registration.step_completed', 'pending', { step: 0, stepName: 'personal' });
     setCurrentStep(1);
   };
 
@@ -368,6 +377,7 @@ export function ClientOnboarding() {
     // Validate postal code against country zones
     const zone = validPostalZones[data.country];
     if (zone && !zone.pattern.test(data.postalCode.trim())) {
+      logEvent('registration.step_completed', 'pending', { step: 1, stepName: 'address', blocked: true, reason: 'postal' });
       // Redirect to Not Eligible page with context
       navigate('/not-eligible', { 
         state: { 
@@ -379,21 +389,26 @@ export function ClientOnboarding() {
     }
     setPostalError(null);
     setFormData((prev) => ({ ...prev, address: data }));
+    logEvent('registration.step_completed', 'pending', { step: 1, stepName: 'address', countryCode: data.country });
     setCurrentStep(2); // Go to Business Details step
   };
 
   const handleBusinessSubmit = (data: Business) => {
     setFormData((prev) => ({ ...prev, business: data }));
+    logEvent('registration.step_completed', 'pending', { step: 2, stepName: 'business', isBusiness: data.isBusiness });
     setCurrentStep(3); // Go to Medical History step
   };
 
   const handleMedicalHistorySubmit = (data: MedicalHistory) => {
     setFormData((prev) => ({ ...prev, medicalHistory: data }));
+    logEvent('registration.step_completed', 'pending', { step: 3, stepName: 'medical_history' });
     setCurrentStep(4); // Go to Medical Information step
   };
 
   const handleMedicalSubmit = async (data: Medical) => {
     setFormData((prev) => ({ ...prev, medical: data }));
+    logEvent('registration.step_completed', 'pending', { step: 4, stepName: 'medical' });
+    logEvent('registration.submitted', 'pending', { countryCode: formData.address?.country });
     setIsSubmitting(true);
     setDocumentError(null);
     setKycStatus('verifying');
@@ -480,6 +495,10 @@ export function ClientOnboarding() {
           clientId = result.clientId;
           kycLink = result.kycLink || null;
           apiSuccess = true;
+          logEvent('registration.success', clientId, { hasKycLink: !!kycLink, countryCode: formData.address?.country });
+          if (kycLink) {
+            logEvent('kyc.link_received', clientId, { linkPresent: true });
+          }
         }
       } catch (apiError: any) {
         // Check for 422 error in catch block
@@ -487,11 +506,13 @@ export function ClientOnboarding() {
           clearInterval(progressInterval);
           setKycStatus('error');
           setDocumentError('document_quality');
+          logEvent('registration.error', 'pending', { error: 'document_quality' });
           setIsSubmitting(false);
           return;
         }
         // Edge function failed - continue with local client ID
         console.warn('Dr Green API unavailable, using local client ID:', apiError);
+        logEvent('registration.error', 'pending', { error: 'api_unavailable' });
       }
 
       clearInterval(progressInterval);

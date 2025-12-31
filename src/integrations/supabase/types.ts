@@ -197,6 +197,36 @@ export type Database = {
         }
         Relationships: []
       }
+      kyc_journey_logs: {
+        Row: {
+          client_id: string
+          created_at: string | null
+          event_data: Json | null
+          event_source: string
+          event_type: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string | null
+          event_data?: Json | null
+          event_source: string
+          event_type: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string | null
+          event_data?: Json | null
+          event_source?: string
+          event_type?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       prescription_documents: {
         Row: {
           created_at: string
