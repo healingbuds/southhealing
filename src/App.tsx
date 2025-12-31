@@ -16,6 +16,8 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 
 import { ShopProvider } from "@/context/ShopContext";
 import { CursorProvider } from "@/context/CursorContext";
+import { WalletProvider } from "@/providers/WalletProvider";
+import { WalletContextProvider } from "@/context/WalletContext";
 
 
 // Lazy load pages for better performance
@@ -118,28 +120,32 @@ const AnimatedRoutes = () => {
 
 const App = () => (
   <ErrorBoundary>
-    <ThemeProvider defaultTheme="light" storageKey="healing-buds-theme">
-      <CursorProvider>
-        <QueryClientProvider client={queryClient}>
-          <TooltipProvider>
-            <ShopProvider>
-              <CursorFollower>
-                <Toaster />
-                <Sonner />
-                <BrowserRouter>
-                  <SkipLinks />
-                  <ScrollToTop />
-                  <RouteProgress />
-                  <main id="main-content" tabIndex={-1}>
-                    <AnimatedRoutes />
-                  </main>
-                </BrowserRouter>
-              </CursorFollower>
-            </ShopProvider>
-          </TooltipProvider>
-        </QueryClientProvider>
-      </CursorProvider>
-    </ThemeProvider>
+    <WalletProvider>
+      <ThemeProvider defaultTheme="light" storageKey="healing-buds-theme">
+        <CursorProvider>
+          <QueryClientProvider client={queryClient}>
+            <TooltipProvider>
+              <WalletContextProvider>
+                <ShopProvider>
+                  <CursorFollower>
+                    <Toaster />
+                    <Sonner />
+                    <BrowserRouter>
+                      <SkipLinks />
+                      <ScrollToTop />
+                      <RouteProgress />
+                      <main id="main-content" tabIndex={-1}>
+                        <AnimatedRoutes />
+                      </main>
+                    </BrowserRouter>
+                  </CursorFollower>
+                </ShopProvider>
+              </WalletContextProvider>
+            </TooltipProvider>
+          </QueryClientProvider>
+        </CursorProvider>
+      </ThemeProvider>
+    </WalletProvider>
   </ErrorBoundary>
 );
 
