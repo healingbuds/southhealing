@@ -28,6 +28,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
   Form,
   FormControl,
@@ -143,14 +144,19 @@ const addressSchema = z.object({
 
 // Legacy medical history schema matching WordPress DAPP API
 const medicalHistorySchema = z.object({
-  medicalHistory0: z.boolean().default(false), // Heart problems
+  // Safety gates - Yes/No required (stored as string for radio buttons)
+  heartProblems: z.enum(['yes', 'no'], { required_error: 'This field is required' }),
+  psychosisHistory: z.enum(['yes', 'no'], { required_error: 'This field is required' }),
+  cannabisReaction: z.enum(['yes', 'no'], { required_error: 'This field is required' }),
+  // Diagnosed conditions - checkbox array
+  conditions: z.array(z.string()).default([]),
+  // Current medications - checkbox array
+  medications: z.array(z.string()).default([]),
+  // Legacy fields kept for API compatibility
   medicalHistory1: z.boolean().default(false), // Cancer treatment
   medicalHistory2: z.boolean().default(false), // Immunosuppressants
   medicalHistory3: z.boolean().default(false), // Liver disease
-  medicalHistory4: z.boolean().default(false), // Psychiatric history
-  medicalHistory5: z.array(z.string()).default(['none']), // Diagnosed conditions
   medicalHistory6: z.boolean().default(false), // Suicidal history
-  medicalHistory7: z.array(z.string()).default(['none']), // Family conditions
   medicalHistory9: z.boolean().default(false), // Alcohol abuse history
   medicalHistory10: z.boolean().default(false), // Drug services care history
   medicalHistory11: z.string().default('0'), // Alcohol units per week
@@ -217,13 +223,40 @@ const countries = [
   { code: 'GB', name: 'United Kingdom' },
 ];
 
-// Medical history field labels for checkboxes
+// Specific condition options (checkbox grid)
+const conditionOptions = [
+  { value: 'adhd', label: 'ADHD' },
+  { value: 'agoraphobia', label: 'Agoraphobia' },
+  { value: 'anxiety', label: 'Anxiety' },
+  { value: 'depression', label: 'Depression' },
+  { value: 'tourettes', label: 'Tourettes' },
+  { value: 'ptsd', label: 'PTSD' },
+  { value: 'ocd', label: 'OCD' },
+  { value: 'chronic_pain', label: 'Chronic Pain' },
+  { value: 'insomnia', label: 'Insomnia' },
+  { value: 'fibromyalgia', label: 'Fibromyalgia' },
+  { value: 'migraines', label: 'Migraines' },
+  { value: 'arthritis', label: 'Arthritis' },
+];
+
+// Specific medication options (checkbox grid)
+const medicationOptions = [
+  { value: 'venlafaxine', label: 'Venlafaxine' },
+  { value: 'zolpidem', label: 'Zolpidem' },
+  { value: 'zopiclone', label: 'Zopiclone' },
+  { value: 'sertraline', label: 'Sertraline' },
+  { value: 'fluoxetine', label: 'Fluoxetine' },
+  { value: 'gabapentin', label: 'Gabapentin' },
+  { value: 'pregabalin', label: 'Pregabalin' },
+  { value: 'amitriptyline', label: 'Amitriptyline' },
+  { value: 'none', label: 'None of the above' },
+];
+
+// Legacy medical history field labels for additional checkboxes
 const medicalHistoryFields = [
-  { key: 'medicalHistory0', label: 'History of heart problems', description: 'Including heart disease, arrhythmia, or heart attacks' },
   { key: 'medicalHistory1', label: 'Currently treated for cancer', description: 'Undergoing chemotherapy, radiation, or other cancer treatments' },
   { key: 'medicalHistory2', label: 'Taking immunosuppressants', description: 'Medications that suppress the immune system' },
   { key: 'medicalHistory3', label: 'History of liver disease', description: 'Including hepatitis, cirrhosis, or fatty liver' },
-  { key: 'medicalHistory4', label: 'Psychiatric history', description: 'History of mental health conditions requiring treatment' },
   { key: 'medicalHistory6', label: 'History of suicidal thoughts or self-harm', description: 'Past or current suicidal ideation' },
   { key: 'medicalHistory9', label: 'History of alcohol abuse', description: 'Past or current alcohol dependency' },
   { key: 'medicalHistory10', label: 'History of drug services care', description: 'Previous treatment for substance abuse' },
@@ -316,14 +349,18 @@ export function ClientOnboarding() {
   const medicalHistoryForm = useForm<MedicalHistory>({
     resolver: zodResolver(medicalHistorySchema),
     defaultValues: formData.medicalHistory || {
-      medicalHistory0: false,
+      // Safety gates - required Yes/No
+      heartProblems: undefined,
+      psychosisHistory: undefined,
+      cannabisReaction: undefined,
+      // Condition and medication arrays
+      conditions: [],
+      medications: [],
+      // Legacy fields
       medicalHistory1: false,
       medicalHistory2: false,
       medicalHistory3: false,
-      medicalHistory4: false,
-      medicalHistory5: ['none'],
       medicalHistory6: false,
-      medicalHistory7: ['none'],
       medicalHistory9: false,
       medicalHistory10: false,
       medicalHistory11: '0',
@@ -1211,11 +1248,205 @@ export function ClientOnboarding() {
                 <Form {...medicalHistoryForm}>
                   <form
                     onSubmit={medicalHistoryForm.handleSubmit(handleMedicalHistorySubmit)}
-                    className="space-y-6"
+                    className="space-y-8"
                   >
-                    {/* Boolean checkbox fields */}
+                    {/* SAFETY GATES - Yes/No Radio Buttons (Required) */}
                     <div className="space-y-4">
-                      <h4 className="font-medium text-sm">Health Conditions</h4>
+                      <h4 className="font-semibold text-base flex items-center gap-2">
+                        <AlertTriangle className="h-4 w-4 text-amber-500" />
+                        Safety Screening
+                      </h4>
+                      <p className="text-sm text-muted-foreground">
+                        These questions are critical for your safety. Please answer honestly.
+                      </p>
+                      
+                      {/* Heart Problems */}
+                      <FormField
+                        control={medicalHistoryForm.control}
+                        name="heartProblems"
+                        render={({ field }) => (
+                          <FormItem className="p-4 rounded-xl border-2 border-amber-500/30 bg-amber-500/5">
+                            <FormLabel className="font-medium text-base">
+                              Do you have a history of heart problems? *
+                            </FormLabel>
+                            <FormDescription className="text-sm">
+                              Including heart disease, arrhythmia, heart attacks, or cardiovascular conditions
+                            </FormDescription>
+                            <FormControl>
+                              <RadioGroup
+                                onValueChange={field.onChange}
+                                value={field.value}
+                                className="flex gap-4 mt-3"
+                              >
+                                <div className="flex items-center space-x-2">
+                                  <RadioGroupItem value="yes" id="heart-yes" />
+                                  <label htmlFor="heart-yes" className="font-medium cursor-pointer">Yes</label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                  <RadioGroupItem value="no" id="heart-no" />
+                                  <label htmlFor="heart-no" className="font-medium cursor-pointer">No</label>
+                                </div>
+                              </RadioGroup>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      {/* Psychosis History */}
+                      <FormField
+                        control={medicalHistoryForm.control}
+                        name="psychosisHistory"
+                        render={({ field }) => (
+                          <FormItem className="p-4 rounded-xl border-2 border-amber-500/30 bg-amber-500/5">
+                            <FormLabel className="font-medium text-base">
+                              Do you have a history of Psychosis? *
+                            </FormLabel>
+                            <FormDescription className="text-sm">
+                              Including schizophrenia, psychotic episodes, or severe psychiatric conditions
+                            </FormDescription>
+                            <FormControl>
+                              <RadioGroup
+                                onValueChange={field.onChange}
+                                value={field.value}
+                                className="flex gap-4 mt-3"
+                              >
+                                <div className="flex items-center space-x-2">
+                                  <RadioGroupItem value="yes" id="psychosis-yes" />
+                                  <label htmlFor="psychosis-yes" className="font-medium cursor-pointer">Yes</label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                  <RadioGroupItem value="no" id="psychosis-no" />
+                                  <label htmlFor="psychosis-no" className="font-medium cursor-pointer">No</label>
+                                </div>
+                              </RadioGroup>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      {/* Cannabis Reaction */}
+                      <FormField
+                        control={medicalHistoryForm.control}
+                        name="cannabisReaction"
+                        render={({ field }) => (
+                          <FormItem className="p-4 rounded-xl border-2 border-amber-500/30 bg-amber-500/5">
+                            <FormLabel className="font-medium text-base">
+                              Have you ever had an adverse reaction to Cannabis? *
+                            </FormLabel>
+                            <FormDescription className="text-sm">
+                              Including severe anxiety, paranoia, allergic reactions, or other negative responses
+                            </FormDescription>
+                            <FormControl>
+                              <RadioGroup
+                                onValueChange={field.onChange}
+                                value={field.value}
+                                className="flex gap-4 mt-3"
+                              >
+                                <div className="flex items-center space-x-2">
+                                  <RadioGroupItem value="yes" id="reaction-yes" />
+                                  <label htmlFor="reaction-yes" className="font-medium cursor-pointer">Yes</label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                  <RadioGroupItem value="no" id="reaction-no" />
+                                  <label htmlFor="reaction-no" className="font-medium cursor-pointer">No</label>
+                                </div>
+                              </RadioGroup>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    {/* CONDITIONS - Checkbox Grid */}
+                    <div className="space-y-4">
+                      <h4 className="font-semibold text-base">Diagnosed Conditions</h4>
+                      <p className="text-sm text-muted-foreground">
+                        Select any conditions you have been diagnosed with:
+                      </p>
+                      <FormField
+                        control={medicalHistoryForm.control}
+                        name="conditions"
+                        render={({ field }) => (
+                          <FormItem>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                              {conditionOptions.map((condition) => (
+                                <label
+                                  key={condition.value}
+                                  className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all duration-200 ${
+                                    field.value?.includes(condition.value)
+                                      ? 'border-primary bg-primary/10 text-primary'
+                                      : 'border-border/50 hover:border-primary/50 hover:bg-muted/30'
+                                  }`}
+                                >
+                                  <Checkbox
+                                    checked={field.value?.includes(condition.value)}
+                                    onCheckedChange={(checked) => {
+                                      const currentValues = field.value || [];
+                                      if (checked) {
+                                        field.onChange([...currentValues, condition.value]);
+                                      } else {
+                                        field.onChange(currentValues.filter((v) => v !== condition.value));
+                                      }
+                                    }}
+                                  />
+                                  <span className="font-medium text-sm">{condition.label}</span>
+                                </label>
+                              ))}
+                            </div>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    {/* MEDICATIONS - Checkbox Grid */}
+                    <div className="space-y-4">
+                      <h4 className="font-semibold text-base">Current Medications</h4>
+                      <p className="text-sm text-muted-foreground">
+                        Select any medications you are currently taking:
+                      </p>
+                      <FormField
+                        control={medicalHistoryForm.control}
+                        name="medications"
+                        render={({ field }) => (
+                          <FormItem>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                              {medicationOptions.map((medication) => (
+                                <label
+                                  key={medication.value}
+                                  className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all duration-200 ${
+                                    field.value?.includes(medication.value)
+                                      ? 'border-primary bg-primary/10 text-primary'
+                                      : 'border-border/50 hover:border-primary/50 hover:bg-muted/30'
+                                  }`}
+                                >
+                                  <Checkbox
+                                    checked={field.value?.includes(medication.value)}
+                                    onCheckedChange={(checked) => {
+                                      const currentValues = field.value || [];
+                                      if (checked) {
+                                        field.onChange([...currentValues, medication.value]);
+                                      } else {
+                                        field.onChange(currentValues.filter((v) => v !== medication.value));
+                                      }
+                                    }}
+                                  />
+                                  <span className="font-medium text-sm">{medication.label}</span>
+                                </label>
+                              ))}
+                            </div>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    {/* Additional Health Conditions - Legacy Checkboxes */}
+                    <div className="space-y-4">
+                      <h4 className="font-semibold text-base">Additional Health Information</h4>
                       <div className="space-y-3">
                         {medicalHistoryFields.map((field) => (
                           <FormField
@@ -1247,7 +1478,7 @@ export function ClientOnboarding() {
 
                     {/* Alcohol consumption */}
                     <div className="space-y-3">
-                      <h4 className="font-medium text-sm">Alcohol Consumption</h4>
+                      <h4 className="font-semibold text-base">Alcohol Consumption</h4>
                       <FormField
                         control={medicalHistoryForm.control}
                         name="medicalHistory11"
@@ -1279,7 +1510,7 @@ export function ClientOnboarding() {
 
                     {/* Cannabis usage */}
                     <div className="space-y-3">
-                      <h4 className="font-medium text-sm">Cannabis Experience</h4>
+                      <h4 className="font-semibold text-base">Cannabis Experience</h4>
                       <FormField
                         control={medicalHistoryForm.control}
                         name="medicalHistory13"
