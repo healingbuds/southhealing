@@ -14,6 +14,7 @@ import ErrorBoundary from "@/components/ErrorBoundary";
 import SkipLinks from "@/components/SkipLinks";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { ProtectedNFTRoute } from "@/components/ProtectedNFTRoute";
+import { ComplianceGuard } from "@/components/ComplianceGuard";
 
 import { ShopProvider } from "@/context/ShopContext";
 import { CursorProvider } from "@/context/CursorContext";
@@ -38,6 +39,7 @@ const ShopRegister = lazy(() => import("./pages/ShopRegister"));
 const CultivarDetail = lazy(() => import("./pages/CultivarDetail"));
 const Checkout = lazy(() => import("./pages/Checkout"));
 const Orders = lazy(() => import("./pages/Orders"));
+const DashboardStatus = lazy(() => import("./pages/DashboardStatus"));
 const PatientDashboard = lazy(() => import("./pages/PatientDashboard"));
 const AdminPrescriptions = lazy(() => import("./pages/AdminPrescriptions"));
 const AdminStrains = lazy(() => import("./pages/AdminStrains"));
@@ -67,13 +69,30 @@ const AnimatedRoutes = () => {
           
           {/* Patient Portal */}
           <Route path="/dashboard" element={<PatientDashboard />} />
-          <Route path="/orders" element={<Orders />} />
+          <Route path="/dashboard/status" element={<DashboardStatus />} />
+          <Route path="/orders" element={
+            <ComplianceGuard>
+              <Orders />
+            </ComplianceGuard>
+          } />
           
-          {/* Shop */}
-          <Route path="/shop" element={<Shop />} />
+          {/* Shop - Protected by ComplianceGuard */}
+          <Route path="/shop" element={
+            <ComplianceGuard>
+              <Shop />
+            </ComplianceGuard>
+          } />
           <Route path="/shop/register" element={<ShopRegister />} />
-          <Route path="/shop/cultivar/:cultivarId" element={<CultivarDetail />} />
-          <Route path="/checkout" element={<Checkout />} />
+          <Route path="/shop/cultivar/:cultivarId" element={
+            <ComplianceGuard>
+              <CultivarDetail />
+            </ComplianceGuard>
+          } />
+          <Route path="/checkout" element={
+            <ComplianceGuard>
+              <Checkout />
+            </ComplianceGuard>
+          } />
           
           {/* Protected Admin Routes - Dual Auth: Supabase Role + NFT Ownership */}
           <Route path="/admin" element={

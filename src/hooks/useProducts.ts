@@ -23,6 +23,7 @@ export interface Product {
   availability: boolean;
   stock: number;
   imageUrl: string;
+  videoUrl?: string;
   effects: string[];
   terpenes: string[];
   category: string;

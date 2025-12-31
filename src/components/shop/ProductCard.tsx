@@ -1,3 +1,4 @@
+import { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { ShoppingCart, Eye, Leaf, Droplets, Lock, Sparkles, Database, Cloud, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -9,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useTranslation } from 'react-i18next';
 import { formatPrice } from '@/lib/currency';
 import { PriceBreakdownTooltip } from './PriceBreakdownTooltip';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface ProductCardProps {
   product: Product;
@@ -26,6 +28,11 @@ export function ProductCard({ product, onViewDetails, showDataSource = false }: 
   const navigate = useNavigate();
   const { toast } = useToast();
   const { t } = useTranslation('shop');
+  const isMobile = useIsMobile();
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [isHovered, setIsHovered] = useState(false);
+
+  const hasVideo = !!product.videoUrl;
 
   const handleAddToCart = () => {
     if (!drGreenClient) {
@@ -58,6 +65,21 @@ export function ProductCard({ product, onViewDetails, showDataSource = false }: 
       title: "Added to cart",
       description: `${product.name} has been added to your cart.`,
     });
+  };
+
+  const handleMouseEnter = () => {
+    setIsHovered(true);
+    if (hasVideo && videoRef.current && !isMobile) {
+      videoRef.current.play().catch(() => {});
+    }
+  };
+
+  const handleMouseLeave = () => {
+    setIsHovered(false);
+    if (hasVideo && videoRef.current && !isMobile) {
+      videoRef.current.pause();
+      videoRef.current.currentTime = 0;
+    }
   };
 
   const getCategoryStyles = (category: string) => {
@@ -138,22 +160,35 @@ export function ProductCard({ product, onViewDetails, showDataSource = false }: 
       transition={{ duration: 0.3, ease: "easeOut" }}
       className="h-full cursor-pointer"
       onClick={() => navigate(`/shop/cultivar/${product.id}`)}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
       <div className={`group relative h-full overflow-hidden rounded-2xl bg-gradient-to-b from-card to-card/80 dark:from-card/90 dark:to-card/60 backdrop-blur-xl border border-border/50 dark:border-white/10 shadow-xl shadow-black/10 dark:shadow-black/20 hover:shadow-2xl hover:shadow-primary/20 transition-all duration-500 ${categoryStyles.glow}`}>
         {/* Gradient overlay for premium depth */}
         <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-black/20 pointer-events-none" />
         
-        {/* Image container with full-bleed display */}
+        {/* Image/Video container with full-bleed display */}
         <div className="relative aspect-square overflow-hidden bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-900/40 dark:to-slate-900/60">
-          {/* Direct product image - full bleed */}
-          <img
-            src={product.imageUrl}
-            alt={product.name}
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-            loading="lazy"
-          />
-          
-          {/* Category badge removed - now part of jar image */}
+          {/* Video or Image - full bleed */}
+          {hasVideo ? (
+            <video
+              ref={videoRef}
+              src={product.videoUrl}
+              muted
+              loop
+              playsInline
+              autoPlay={isMobile}
+              poster={product.imageUrl}
+              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+            />
+          ) : (
+            <img
+              src={product.imageUrl}
+              alt={product.name}
+              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+              loading="lazy"
+            />
+          )}
           
           {/* Quick view button - top right */}
           <motion.button
