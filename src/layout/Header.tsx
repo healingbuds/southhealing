@@ -122,17 +122,13 @@ const Header = ({ onMenuStateChange }: HeaderProps) => {
           "transition-all duration-500 ease-out"
         )}
       >
-        {/* Navbar Background - Theme Aware */}
+        {/* Navbar Background - Unified Teal Green for Both Modes */}
         <div 
           className={cn(
             "transition-all duration-500",
-            isDark
-              ? scrolled 
-                ? "bg-[#1A2E2A]/98 backdrop-blur-xl shadow-2xl shadow-black/30" 
-                : "bg-[#1A2E2A]"
-              : scrolled
-                ? "bg-white/95 backdrop-blur-xl shadow-lg shadow-black/10"
-                : "bg-white"
+            scrolled 
+              ? "bg-[#1A2E2A]/98 backdrop-blur-xl shadow-2xl shadow-black/30" 
+              : "bg-[#1A2E2A]"
           )}
         >
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -192,9 +188,7 @@ const Header = ({ onMenuStateChange }: HeaderProps) => {
                         to="/dashboard"
                         className={cn(
                           "font-medium px-4 py-2.5 rounded-lg transition-all duration-300",
-                          isDark 
-                            ? "bg-white/10 text-white hover:bg-white/20 border border-white/20 hover:border-gold-500/50"
-                            : "bg-teal-50 text-teal-800 hover:bg-teal-100 border border-teal-200 hover:border-teal-400",
+                          "bg-white/10 text-white hover:bg-white/20 border border-white/20 hover:border-[#EAB308]/50",
                           "text-sm flex items-center gap-2"
                         )}
                       >
@@ -205,9 +199,7 @@ const Header = ({ onMenuStateChange }: HeaderProps) => {
                         onClick={handleLogout}
                         className={cn(
                           "p-2.5 rounded-lg transition-all duration-300",
-                          isDark 
-                            ? "text-white/70 hover:text-white hover:bg-white/10"
-                            : "text-teal-600 hover:text-teal-800 hover:bg-teal-50"
+                          "text-white/70 hover:text-white hover:bg-white/10"
                         )}
                         title={t('nav.signOut')}
                       >
@@ -219,9 +211,7 @@ const Header = ({ onMenuStateChange }: HeaderProps) => {
                       to="/auth"
                       className={cn(
                         "font-medium px-4 py-2.5 rounded-lg transition-all duration-300",
-                        isDark 
-                          ? "bg-white/10 text-white hover:bg-white/20 border border-white/20 hover:border-[#EAB308]/50 hover:text-[#EAB308]"
-                          : "bg-teal-50 text-teal-800 hover:bg-teal-100 border border-teal-200 hover:border-teal-400",
+                        "bg-white/10 text-white hover:bg-white/20 border border-white/20 hover:border-[#EAB308]/50 hover:text-[#EAB308]",
                         "text-sm flex items-center gap-2"
                       )}
                     >
@@ -246,11 +236,8 @@ const Header = ({ onMenuStateChange }: HeaderProps) => {
           </div>
         </div>
         
-        {/* Intentional Gap - Theme Aware Separator Line */}
-        <div className={cn(
-          "h-[2px] shadow-sm",
-          isDark ? "bg-white/80" : "bg-teal-600/30"
-        )} />
+        {/* Separator Line - Consistent Gold Accent */}
+        <div className="h-[2px] shadow-sm bg-[#EAB308]/60" />
       </header>
 
       {/* Mobile Navigation Overlay */}

@@ -30,10 +30,7 @@ const AnimatedMenuButton = ({ isOpen, onClick, className = "", isDark = true }: 
       <div className="relative w-6 h-5 flex flex-col justify-between">
         {/* Top bar */}
         <motion.span
-          className={cn(
-            "absolute top-0 left-0 w-full h-0.5 rounded-full origin-center",
-            isDark ? "bg-white" : "bg-teal-700"
-          )}
+          className="absolute top-0 left-0 w-full h-0.5 rounded-full origin-center bg-white"
           animate={{
             rotate: isOpen ? 45 : 0,
             y: isOpen ? 9 : 0,
@@ -43,10 +40,7 @@ const AnimatedMenuButton = ({ isOpen, onClick, className = "", isDark = true }: 
         
         {/* Middle bar */}
         <motion.span
-          className={cn(
-            "absolute top-1/2 left-0 w-full h-0.5 rounded-full origin-center -translate-y-1/2",
-            isDark ? "bg-white" : "bg-teal-700"
-          )}
+          className="absolute top-1/2 left-0 w-full h-0.5 rounded-full origin-center -translate-y-1/2 bg-white"
           animate={{
             opacity: isOpen ? 0 : 1,
             scaleX: isOpen ? 0 : 1,
@@ -56,10 +50,7 @@ const AnimatedMenuButton = ({ isOpen, onClick, className = "", isDark = true }: 
         
         {/* Bottom bar */}
         <motion.span
-          className={cn(
-            "absolute bottom-0 left-0 w-full h-0.5 rounded-full origin-center",
-            isDark ? "bg-white" : "bg-teal-700"
-          )}
+          className="absolute bottom-0 left-0 w-full h-0.5 rounded-full origin-center bg-white"
           animate={{
             rotate: isOpen ? -45 : 0,
             y: isOpen ? -9 : 0,

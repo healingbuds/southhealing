@@ -41,35 +41,25 @@ const NavigationMenu = ({ scrolled, isDark = true }: NavigationMenuProps) => {
               "relative px-5 py-2.5 rounded-lg font-medium transition-all duration-300",
               "text-sm flex items-center gap-2",
               "group",
-              isDark
-                ? active
-                  ? "text-white bg-white/15 border-b-2 border-[#EAB308]"
-                  : "text-white/85 hover:text-white hover:bg-white/10"
-                : active
-                  ? "text-teal-800 bg-teal-50 border-b-2 border-teal-600"
-                  : "text-teal-700 hover:text-teal-900 hover:bg-teal-50"
+              active
+                ? "text-white bg-white/15 border-b-2 border-[#EAB308]"
+                : "text-white/85 hover:text-white hover:bg-white/10"
             )}
           >
             <Icon className={cn(
               "w-4 h-4 transition-colors duration-300",
-              isDark
-                ? active ? "text-[#EAB308]" : "text-white/60 group-hover:text-[#EAB308]"
-                : active ? "text-teal-600" : "text-teal-500 group-hover:text-teal-700"
+              active ? "text-[#EAB308]" : "text-white/60 group-hover:text-[#EAB308]"
             )} />
             {item.label}
             
             {/* Active indicator dot */}
             {active && (
-              <span className={cn(
-                "absolute bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full",
-                isDark ? "bg-[#EAB308]" : "bg-teal-600"
-              )} />
+              <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-[#EAB308]" />
             )}
             
             {/* Hover underline */}
             <span className={cn(
-              "absolute bottom-0 left-1/2 -translate-x-1/2 h-0.5 transition-all duration-300",
-              isDark ? "bg-[#EAB308]" : "bg-teal-600",
+              "absolute bottom-0 left-1/2 -translate-x-1/2 h-0.5 transition-all duration-300 bg-[#EAB308]",
               active ? "w-full opacity-100" : "w-0 opacity-0 group-hover:w-3/4 group-hover:opacity-60"
             )} />
           </Link>
