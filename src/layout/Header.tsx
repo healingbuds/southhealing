@@ -45,8 +45,8 @@ const Header = ({ onMenuStateChange }: HeaderProps) => {
   
   const isDark = resolvedTheme === 'dark';
   
-  // Dynamic tenant logo
-  const logoSrc = isDark ? tenant.logo.dark : tenant.logo.light;
+  // Always use white logo since navbar is always teal green
+  const logoSrc = tenant.logo.dark;
   
   // Scroll progress tracking
   const { scrollYProgress } = useScroll();
