@@ -66,11 +66,10 @@ serve(async (req) => {
       );
       const signatureBuffer = await crypto.subtle.sign("HMAC", cryptoKey, encoder.encode(queryParams));
       const signatureBytes = new Uint8Array(signatureBuffer);
-      let binary = '';
-      for (let i = 0; i < signatureBytes.byteLength; i++) {
-        binary += String.fromCharCode(signatureBytes[i]);
-      }
-      const signature = btoa(binary);
+      // Convert to lowercase hex (matches PHP hash_hmac default)
+      const signature = Array.from(signatureBytes)
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
 
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
