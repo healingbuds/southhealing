@@ -12,7 +12,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { User as SupabaseUser } from "@supabase/supabase-js";
 import { useTranslation } from "react-i18next";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
-import hbLogoWhite from "@/assets/hb-logo-white-new.png";
+import hbLogoWhite from "@/assets/hb-logo-white-full.png";
 import LanguageSwitcher from "./LanguageSwitcher";
 import ThemeToggle from "./ThemeToggle";
 
