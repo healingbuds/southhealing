@@ -242,10 +242,24 @@ async function signQueryString(queryString: string, secretKey: string): Promise<
 async function drGreenRequestBody(
   endpoint: string,
   method: string,
-  body?: object
+  body?: object,
+  enableDetailedLogging = false
 ): Promise<Response> {
   const apiKey = Deno.env.get("DRGREEN_API_KEY");
   const secretKey = Deno.env.get("DRGREEN_PRIVATE_KEY");
+  
+  // Enhanced credential diagnostics when enabled
+  if (enableDetailedLogging) {
+    console.log("[API-DEBUG] ========== BODY REQUEST PREPARATION ==========");
+    console.log("[API-DEBUG] Endpoint:", endpoint);
+    console.log("[API-DEBUG] Method:", method);
+    console.log("[API-DEBUG] API Key present:", !!apiKey);
+    console.log("[API-DEBUG] API Key length:", apiKey?.length || 0);
+    console.log("[API-DEBUG] API Key prefix:", apiKey ? apiKey.slice(0, 8) + "..." : "N/A");
+    console.log("[API-DEBUG] API Key is Base64:", apiKey ? /^[A-Za-z0-9+/=]+$/.test(apiKey) : false);
+    console.log("[API-DEBUG] Private Key present:", !!secretKey);
+    console.log("[API-DEBUG] Private Key length:", secretKey?.length || 0);
+  }
   
   if (!apiKey || !secretKey) {
     throw new Error("Dr Green API credentials not configured");
@@ -254,12 +268,27 @@ async function drGreenRequestBody(
   const payload = body ? JSON.stringify(body) : "";
   const signature = await signPayload(payload, secretKey);
   
+  if (enableDetailedLogging) {
+    console.log("[API-DEBUG] Payload length:", payload.length);
+    console.log("[API-DEBUG] Payload preview:", payload.slice(0, 150));
+    console.log("[API-DEBUG] Signature length:", signature.length);
+    console.log("[API-DEBUG] Signature prefix:", signature.slice(0, 16) + "...");
+  }
+  
   // API key is already Base64 encoded - send as-is
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     "x-auth-apikey": apiKey,
     "x-auth-signature": signature,
   };
+  
+  if (enableDetailedLogging) {
+    console.log("[API-DEBUG] Headers:", {
+      "Content-Type": headers["Content-Type"],
+      "x-auth-apikey": `${headers["x-auth-apikey"]?.slice(0, 12)}... (len: ${headers["x-auth-apikey"]?.length})`,
+      "x-auth-signature": `${headers["x-auth-signature"]?.slice(0, 12)}... (len: ${headers["x-auth-signature"]?.length})`
+    });
+  }
   
   const url = `${DRGREEN_API_URL}${endpoint}`;
   logInfo(`API request: ${method} ${endpoint}`);
@@ -276,6 +305,23 @@ async function drGreenRequestBody(
     });
     
     clearTimeout(timeoutId);
+    
+    // Enhanced 401 error analysis when enabled
+    if (response.status === 401 && enableDetailedLogging) {
+      const clonedResp = response.clone();
+      const errorBody = await clonedResp.text();
+      console.log("[API-DEBUG] ========== 401 UNAUTHORIZED ANALYSIS ==========");
+      console.log("[API-DEBUG] Response status:", response.status);
+      console.log("[API-DEBUG] Response headers:", JSON.stringify(Object.fromEntries(response.headers.entries())));
+      console.log("[API-DEBUG] Error body:", errorBody);
+      console.log("[API-DEBUG] Possible causes:");
+      console.log("[API-DEBUG]   1. API key not properly Base64 encoded");
+      console.log("[API-DEBUG]   2. Private key incorrect or mismatched");
+      console.log("[API-DEBUG]   3. Account lacks permission for this endpoint");
+      console.log("[API-DEBUG]   4. Wrong environment (sandbox vs production)");
+      console.log("[API-DEBUG]   5. IP not whitelisted");
+    }
+    
     return response;
   } catch (error: unknown) {
     clearTimeout(timeoutId);
@@ -292,10 +338,17 @@ async function drGreenRequestBody(
  */
 async function drGreenRequestQuery(
   endpoint: string,
-  queryParams: Record<string, string | number>
+  queryParams: Record<string, string | number>,
+  enableDetailedLogging = false
 ): Promise<Response> {
   const apiKey = Deno.env.get("DRGREEN_API_KEY");
   const secretKey = Deno.env.get("DRGREEN_PRIVATE_KEY");
+  
+  if (enableDetailedLogging) {
+    console.log("[API-DEBUG] ========== QUERY REQUEST PREPARATION ==========");
+    console.log("[API-DEBUG] Endpoint:", endpoint);
+    console.log("[API-DEBUG] Query params:", JSON.stringify(queryParams));
+  }
   
   if (!apiKey || !secretKey) {
     throw new Error("Dr Green API credentials not configured");
@@ -310,6 +363,12 @@ async function drGreenRequestQuery(
   
   // Sign the query string (not the body)
   const signature = await signQueryString(queryString, secretKey);
+  
+  if (enableDetailedLogging) {
+    console.log("[API-DEBUG] Query string:", queryString);
+    console.log("[API-DEBUG] Signature length:", signature.length);
+    console.log("[API-DEBUG] Signature prefix:", signature.slice(0, 16) + "...");
+  }
   
   // API key is already Base64 encoded - send as-is
   const headers: Record<string, string> = {
@@ -332,6 +391,14 @@ async function drGreenRequestQuery(
     });
     
     clearTimeout(timeoutId);
+    
+    if (response.status === 401 && enableDetailedLogging) {
+      console.log("[API-DEBUG] ========== QUERY 401 ANALYSIS ==========");
+      console.log("[API-DEBUG] Status:", response.status);
+      const errorBody = await response.clone().text();
+      console.log("[API-DEBUG] Error body:", errorBody);
+    }
+    
     return response;
   } catch (error: unknown) {
     clearTimeout(timeoutId);
@@ -389,26 +456,223 @@ serve(async (req) => {
     const action = body?.action || apiPath;
     console.log("[drgreen-proxy] Resolved action:", action);
     
-    // Health check endpoint - verify deployment and secrets
+    // Health check endpoint - verify deployment and secrets with enhanced validation
     if (action === 'health-check') {
-      const hasApiKey = !!Deno.env.get("DRGREEN_API_KEY");
-      const hasPrivateKey = !!Deno.env.get("DRGREEN_PRIVATE_KEY");
+      const apiKey = Deno.env.get("DRGREEN_API_KEY");
+      const privateKey = Deno.env.get("DRGREEN_PRIVATE_KEY");
       const hasSupabaseUrl = !!Deno.env.get("SUPABASE_URL");
       const hasAnonKey = !!Deno.env.get("SUPABASE_ANON_KEY");
       
-      console.log("[drgreen-proxy] Health check:", { hasApiKey, hasPrivateKey, hasSupabaseUrl, hasAnonKey });
+      // Enhanced credential validation
+      const isApiKeyBase64 = apiKey ? /^[A-Za-z0-9+/=]+$/.test(apiKey) : false;
+      let decodedApiKeyLength = 0;
+      if (isApiKeyBase64 && apiKey) {
+        try {
+          decodedApiKeyLength = atob(apiKey).length;
+        } catch {
+          // Not valid base64
+        }
+      }
       
-      return new Response(JSON.stringify({
+      console.log("[drgreen-proxy] Health check:", { 
+        hasApiKey: !!apiKey, 
+        hasPrivateKey: !!privateKey, 
+        hasSupabaseUrl, 
+        hasAnonKey,
+        isApiKeyBase64,
+        decodedApiKeyLength
+      });
+      
+      const healthResult: Record<string, unknown> = {
         status: 'ok',
         timestamp: new Date().toISOString(),
         secrets: {
-          DRGREEN_API_KEY: hasApiKey ? 'configured' : 'MISSING',
-          DRGREEN_PRIVATE_KEY: hasPrivateKey ? 'configured' : 'MISSING',
+          DRGREEN_API_KEY: apiKey ? 'configured' : 'MISSING',
+          DRGREEN_PRIVATE_KEY: privateKey ? 'configured' : 'MISSING',
           SUPABASE_URL: hasSupabaseUrl ? 'configured' : 'MISSING',
           SUPABASE_ANON_KEY: hasAnonKey ? 'configured' : 'MISSING',
         },
-        allSecretsConfigured: hasApiKey && hasPrivateKey && hasSupabaseUrl && hasAnonKey,
-      }), { 
+        credentialValidation: {
+          apiKeyPresent: !!apiKey,
+          apiKeyLength: apiKey?.length || 0,
+          apiKeyIsBase64: isApiKeyBase64,
+          apiKeyDecodedLength: decodedApiKeyLength,
+          apiKeyPrefix: apiKey ? apiKey.slice(0, 8) + '...' : 'N/A',
+          privateKeyPresent: !!privateKey,
+          privateKeyLength: privateKey?.length || 0,
+          privateKeyPrefix: privateKey ? privateKey.slice(0, 4) + '...' : 'N/A',
+        },
+        allSecretsConfigured: !!apiKey && !!privateKey && hasSupabaseUrl && hasAnonKey,
+        apiBaseUrl: DRGREEN_API_URL,
+      };
+      
+      // Quick API connectivity test with /strains if credentials available
+      if (apiKey && privateKey) {
+        try {
+          const testResponse = await drGreenRequestQuery("/strains", { take: 1 });
+          healthResult.apiConnectivity = {
+            endpoint: "GET /strains",
+            status: testResponse.status,
+            success: testResponse.ok,
+          };
+        } catch (e) {
+          healthResult.apiConnectivity = {
+            endpoint: "GET /strains",
+            error: e instanceof Error ? e.message : 'Unknown error',
+            success: false,
+          };
+        }
+      }
+      
+      return new Response(JSON.stringify(healthResult, null, 2), { 
+        status: 200, 
+        headers: { ...corsHeaders, "Content-Type": "application/json" } 
+      });
+    }
+    
+    // API Diagnostics endpoint - comprehensive endpoint testing
+    if (action === 'api-diagnostics') {
+      const apiKey = Deno.env.get("DRGREEN_API_KEY");
+      const privateKey = Deno.env.get("DRGREEN_PRIVATE_KEY");
+      
+      console.log("[API-DIAGNOSTICS] Starting comprehensive diagnostics...");
+      
+      const diagnostics: Record<string, unknown> = {
+        timestamp: new Date().toISOString(),
+        environment: {
+          apiKeyPresent: !!apiKey,
+          apiKeyLength: apiKey?.length || 0,
+          apiKeyFormat: apiKey ? (/^[A-Za-z0-9+/=]+$/.test(apiKey) ? 'base64' : 'not-base64') : 'missing',
+          apiKeyPrefix: apiKey ? apiKey.slice(0, 8) + '...' : 'N/A',
+          privateKeyPresent: !!privateKey,
+          privateKeyLength: privateKey?.length || 0,
+          privateKeyPrefix: privateKey ? privateKey.slice(0, 4) + '...' : 'N/A',
+          apiBaseUrl: DRGREEN_API_URL,
+        },
+        signatureTests: {},
+        endpointTests: [] as Record<string, unknown>[],
+      };
+      
+      if (apiKey && privateKey) {
+        // Test signature generation
+        const testPayload = JSON.stringify({ test: "diagnostic" });
+        const testQueryString = "orderBy=desc&take=1&page=1";
+        
+        try {
+          const bodySignature = await signPayload(testPayload, privateKey);
+          const querySignature = await signQueryString(testQueryString, privateKey);
+          
+          diagnostics.signatureTests = {
+            bodySignature: {
+              input: testPayload,
+              inputLength: testPayload.length,
+              outputLength: bodySignature.length,
+              outputPrefix: bodySignature.slice(0, 16) + '...',
+              valid: bodySignature.length === 44, // Base64 of 32-byte HMAC
+            },
+            querySignature: {
+              input: testQueryString,
+              inputLength: testQueryString.length,
+              outputLength: querySignature.length,
+              outputPrefix: querySignature.slice(0, 16) + '...',
+              valid: querySignature.length === 44,
+            },
+          };
+        } catch (e) {
+          diagnostics.signatureTests = { error: e instanceof Error ? e.message : 'Unknown error' };
+        }
+        
+        // Test GET /strains (known working endpoint)
+        console.log("[API-DIAGNOSTICS] Testing GET /strains...");
+        try {
+          const strainsResp = await drGreenRequestQuery("/strains", { take: 1 }, true);
+          const strainsBody = await strainsResp.clone().text();
+          (diagnostics.endpointTests as Record<string, unknown>[]).push({
+            endpoint: "GET /strains",
+            method: "Query String Signing",
+            status: strainsResp.status,
+            success: strainsResp.ok,
+            responsePreview: strainsBody.slice(0, 200),
+          });
+        } catch (e) {
+          (diagnostics.endpointTests as Record<string, unknown>[]).push({
+            endpoint: "GET /strains",
+            method: "Query String Signing",
+            error: e instanceof Error ? e.message : 'Unknown error',
+            success: false,
+          });
+        }
+        
+        // Test POST /dapp/clients with minimal payload
+        console.log("[API-DIAGNOSTICS] Testing POST /dapp/clients...");
+        try {
+          const testClientPayload = {
+            transaction_metadata: { 
+              source: "Healingbuds_Diagnostic_Test",
+              timestamp: new Date().toISOString(),
+            },
+          };
+          
+          const clientResp = await drGreenRequestBody("/dapp/clients", "POST", testClientPayload, true);
+          const clientBody = await clientResp.clone().text();
+          (diagnostics.endpointTests as Record<string, unknown>[]).push({
+            endpoint: "POST /dapp/clients",
+            method: "Body Signing",
+            status: clientResp.status,
+            success: clientResp.ok,
+            responsePreview: clientBody.slice(0, 300),
+            diagnosis: clientResp.status === 401 
+              ? "PERMISSION_DENIED: API credentials may lack write access to /dapp/clients"
+              : clientResp.status === 422
+              ? "VALIDATION_ERROR: Payload structure may be incorrect"
+              : clientResp.ok
+              ? "SUCCESS: Endpoint is accessible"
+              : `UNKNOWN_ERROR: Status ${clientResp.status}`,
+          });
+        } catch (e) {
+          (diagnostics.endpointTests as Record<string, unknown>[]).push({
+            endpoint: "POST /dapp/clients",
+            method: "Body Signing",
+            error: e instanceof Error ? e.message : 'Unknown error',
+            success: false,
+          });
+        }
+        
+        // Summary and recommendations
+        const strainsTest = (diagnostics.endpointTests as Record<string, unknown>[]).find(t => t.endpoint === "GET /strains");
+        const clientsTest = (diagnostics.endpointTests as Record<string, unknown>[]).find(t => t.endpoint === "POST /dapp/clients");
+        
+        diagnostics.summary = {
+          readEndpointsWork: strainsTest?.success === true,
+          writeEndpointsWork: clientsTest?.success === true,
+          likelyIssue: strainsTest?.success && !clientsTest?.success
+            ? "PERMISSION_MISMATCH: Credentials work for GET but not POST. Contact Dr. Green API administrator to verify write permissions."
+            : !strainsTest?.success && !clientsTest?.success
+            ? "CREDENTIALS_INVALID: Both read and write endpoints fail. Verify API key and private key."
+            : strainsTest?.success && clientsTest?.success
+            ? "ALL_WORKING: Both endpoints accessible."
+            : "UNKNOWN: Unexpected test results.",
+          recommendations: [] as string[],
+        };
+        
+        if (strainsTest?.success && !clientsTest?.success) {
+          (diagnostics.summary as Record<string, unknown>).recommendations = [
+            "Contact Dr. Green NFT API administrator",
+            "Verify your account has permission for POST /dapp/clients",
+            "Check if IP whitelisting is required",
+            "Confirm you are using the correct environment (sandbox vs production)",
+          ];
+        }
+      } else {
+        diagnostics.summary = {
+          error: "Missing credentials",
+          recommendations: ["Configure DRGREEN_API_KEY and DRGREEN_PRIVATE_KEY secrets"],
+        };
+      }
+      
+      console.log("[API-DIAGNOSTICS] Complete:", JSON.stringify(diagnostics.summary));
+      
+      return new Response(JSON.stringify(diagnostics, null, 2), { 
         status: 200, 
         headers: { ...corsHeaders, "Content-Type": "application/json" } 
       });
