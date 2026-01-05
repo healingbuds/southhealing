@@ -304,10 +304,28 @@ export function ClientOnboarding() {
   const { refreshClient } = useShop();
   const { logEvent } = useKycJourneyLog();
 
-  // Log when registration starts
+  // Check for existing registration on mount
   useEffect(() => {
+    const checkExistingRegistration = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: existingClient } = await supabase
+        .from('drgreen_clients')
+        .select('id, drgreen_client_id, is_kyc_verified, admin_approval, kyc_link')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (existingClient) {
+        // User already registered - redirect to dashboard
+        navigate('/patient-dashboard');
+        return;
+      }
+    };
+
+    checkExistingRegistration();
     logEvent('registration.started', 'pending', { step: 0, stepName: 'personal' });
-  }, []);
+  }, [navigate, logEvent]);
 
   const personalForm = useForm<PersonalDetails>({
     resolver: zodResolver(personalDetailsSchema),
@@ -627,18 +645,20 @@ export function ClientOnboarding() {
       clearInterval(progressInterval);
       setKycProgress(100);
 
-      // Store client info locally
-      const { error: dbError } = await supabase.from('drgreen_clients').insert({
+      // Store client info locally (upsert to handle re-registration attempts)
+      const { error: dbError } = await supabase.from('drgreen_clients').upsert({
         user_id: user.id,
         drgreen_client_id: clientId,
         country_code: formData.address?.country || 'PT',
         is_kyc_verified: false,
         admin_approval: 'PENDING',
         kyc_link: kycLink,
+      }, {
+        onConflict: 'user_id',
       });
 
       if (dbError) {
-        // Only show error if DB insertion fails
+        // Only show error if DB upsert fails
         throw dbError;
       }
 
