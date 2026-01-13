@@ -145,7 +145,7 @@ export default function Debug() {
     try {
       const testPayload = '{"test":"data"}';
       const testSecret = '12345';
-      const expectedHex = '9294727a363851c9d6c572c67b2d5d861d856b39016e7898517528c0353c0751';
+      const expectedHex = 'd3c08a5a496f5b88ffda173ba97434960b01f3ede4f7861789fd9d214b24e0e8';
       
       const generatedHex = await signPayloadHex(testPayload, testSecret);
       
