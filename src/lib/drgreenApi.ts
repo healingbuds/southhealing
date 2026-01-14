@@ -23,7 +23,7 @@ export const countryCodeMap: Record<string, string> = {
 // Convert Alpha-2 to Alpha-3 country code
 export const toAlpha3 = (code: string): string => countryCodeMap[code] || code;
 
-// Types matching legacy WordPress payload structure
+// Types matching exact Dr. Green API payload structure
 export interface LegacyClientPayload {
   firstName: string;
   lastName: string;
@@ -34,6 +34,7 @@ export interface LegacyClientPayload {
   shipping: {
     address1: string;
     address2?: string;
+    landmark?: string;
     city: string;
     state?: string;
     country: string;
@@ -43,41 +44,43 @@ export interface LegacyClientPayload {
   medicalRecord: {
     dob: string; // YYYY-MM-DD format
     gender: string;
-    // Medical history fields matching WordPress exactly
+    // Required boolean flags
     medicalHistory0: boolean; // Heart problems
     medicalHistory1: boolean; // Cancer treatment
     medicalHistory2: boolean; // Immunosuppressants
     medicalHistory3: boolean; // Liver disease
     medicalHistory4: boolean; // Psychiatric history
-    medicalHistory5: string[]; // Diagnosed with (default: ["none"])
-    medicalHistory6: boolean; // Suicidal history
-    medicalHistory7: string[]; // Family conditions (default: ["none"])
-    medicalHistory7Relation?: string; // Relation (default: "none")
-    medicalHistory8?: boolean; // Reserved (default: false)
-    medicalHistory9: boolean; // Alcohol abuse
-    medicalHistory10: boolean; // Drug services
-    medicalHistory11: string; // Alcohol units (default: "0")
+    medicalHistory5: string[]; // Diagnosed with (required array)
+    medicalHistory6?: boolean; // Suicidal history (optional)
+    medicalHistory7?: string[]; // Family conditions (optional array)
+    medicalHistory7Relation?: string; // Relation (optional, only if history7 not "none")
+    medicalHistory8?: boolean; // Drug abuse history (required per API, optional per legacy)
+    medicalHistory9: boolean; // Alcohol abuse history
+    medicalHistory10: boolean; // Drug services care
+    medicalHistory11?: string; // Alcohol units per week (optional)
     medicalHistory12: boolean; // Cannabis to reduce meds
-    medicalHistory13: string; // How often cannabis (default: "Never")
-    medicalHistory14: string[]; // How used cannabis (default: ["never"])
-    medicalHistory15?: string; // Reserved (default: "none")
-    medicalHistory16?: boolean; // Reserved (default: false)
-    // Additional optional fields
+    medicalHistory13: string; // How often cannabis (required)
+    medicalHistory14: string[]; // How used cannabis (required array)
+    medicalHistory15?: string; // Cannabis amount per day (optional)
+    medicalHistory16?: boolean; // Cannabis reaction (optional)
+    prescriptionsSupplements?: string; // Current prescriptions (optional)
+    // Optional condition/treatment fields
     medicalConditions?: string[];
     otherMedicalCondition?: string;
     medicinesTreatments?: string[];
     otherMedicalTreatments?: string;
   };
   clientBusiness?: {
-    businessType: string;
+    businessType?: string;
     name: string;
-    address1: string;
+    address1?: string;
     address2?: string;
-    city: string;
+    landmark?: string;
+    city?: string;
     state?: string;
-    country: string;
-    countryCode: string;
-    postalCode: string;
+    country?: string;
+    countryCode?: string;
+    postalCode?: string;
   };
 }
 
@@ -372,7 +375,28 @@ export function parsePhoneNumber(fullNumber: string): {
 }
 
 /**
- * Build legacy client payload from form data
+ * Build legacy client payload from form data - matches exact Dr. Green API spec
+ * 
+ * Medical History Field Mapping (per API docs):
+ * - medicalHistory0: Heart problems (boolean, required)
+ * - medicalHistory1: Cancer treatment (boolean, required)
+ * - medicalHistory2: Immunosuppressants (boolean, required)
+ * - medicalHistory3: Liver disease (boolean, required)
+ * - medicalHistory4: Psychiatric history (boolean, required)
+ * - medicalHistory5: Diagnosed conditions (array of strings, required)
+ * - medicalHistory6: Suicidal history (boolean, optional)
+ * - medicalHistory7: Family history conditions (array of strings, optional)
+ * - medicalHistory7Relation: Family relation (string, optional, only if history7 not "none")
+ * - medicalHistory8: Drug abuse history (boolean, required)
+ * - medicalHistory9: Alcohol abuse history (boolean, required)
+ * - medicalHistory10: Drug services care (boolean, required)
+ * - medicalHistory11: Alcohol units per week (string, required)
+ * - medicalHistory12: Using cannabis to reduce meds (boolean, required)
+ * - medicalHistory13: How often cannabis used (string, required - everyday/every_other_day/1_2_times_per_week/never)
+ * - medicalHistory14: Cannabis usage methods (array of strings, required)
+ * - medicalHistory15: Cannabis amount per day (string, optional)
+ * - medicalHistory16: Cannabis reaction (boolean, optional)
+ * - prescriptionsSupplements: Current prescriptions (string, optional)
  */
 export function buildLegacyClientPayload(formData: {
   personal: {
@@ -402,6 +426,14 @@ export function buildLegacyClientPayload(formData: {
     businessPostalCode?: string;
   };
   medicalHistory?: {
+    // Safety gates
+    heartProblems?: 'yes' | 'no';
+    psychosisHistory?: 'yes' | 'no';
+    cannabisReaction?: 'yes' | 'no';
+    // Conditions and medications
+    conditions?: string[];
+    medications?: string[];
+    // All medicalHistory fields
     medicalHistory0?: boolean;
     medicalHistory1?: boolean;
     medicalHistory2?: boolean;
@@ -410,12 +442,18 @@ export function buildLegacyClientPayload(formData: {
     medicalHistory5?: string[];
     medicalHistory6?: boolean;
     medicalHistory7?: string[];
+    medicalHistory7Relation?: string;
+    medicalHistory8?: boolean;
     medicalHistory9?: boolean;
     medicalHistory10?: boolean;
     medicalHistory11?: string;
     medicalHistory12?: boolean;
     medicalHistory13?: string;
     medicalHistory14?: string[];
+    medicalHistory15?: string;
+    medicalHistory16?: boolean;
+    prescriptionsSupplements?: string;
+    // Condition details
     medicalConditions?: string[];
     otherMedicalCondition?: string;
     medicinesTreatments?: string[];
@@ -424,59 +462,156 @@ export function buildLegacyClientPayload(formData: {
 }): LegacyClientPayload {
   const phoneInfo = parsePhoneNumber(formData.personal.phone);
   const countryCode = toAlpha3(formData.address.country);
-  
-  // Normalize array fields - if contains "none" or "never", reset to only that value
-  const normalizeArrayField = (arr: string[] | undefined, defaultValue: string[]): string[] => {
-    if (!arr || arr.length === 0) return defaultValue;
-    const hasNone = arr.some(v => v.toLowerCase() === 'none' || v.toLowerCase() === 'never');
-    return hasNone ? defaultValue : arr.map(v => v.toLowerCase());
-  };
-  
   const mh = formData.medicalHistory || {};
   
+  // Map frontend condition values to exact API values
+  const conditionToApiValue: Record<string, string> = {
+    'adhd': 'adhd',
+    'agoraphobia': 'agoraphobia',
+    'anxiety': 'anxiety',
+    'depression': 'depression',
+    'tourettes': 'tourette_syndrome',
+    'ptsd': 'post_traumatic_stress_disorder',
+    'ocd': 'ocd',
+    'chronic_pain': 'chronic_and_long_term_pain',
+    'insomnia': 'sleep_disorders',
+    'fibromyalgia': 'fibromyalgia',
+    'migraines': 'migraine',
+    'arthritis': 'arthritis',
+    'other': 'other_medical_condition',
+  };
+  
+  // Map frontend medication values to exact API values  
+  const medicationToApiValue: Record<string, string> = {
+    'venlafaxine': 'venlafaxine',
+    'zolpidem': 'zolpidem',
+    'zopiclone': 'zopiclone',
+    'sertraline': 'sertraline',
+    'fluoxetine': 'fluoxetine',
+    'gabapentin': 'gabapentin',
+    'pregabalin': 'gabapentin', // Map pregabalin to nearest option
+    'amitriptyline': 'amitriptyline',
+    'none': 'none',
+  };
+  
+  // Map cannabis frequency to API values
+  const frequencyToApiValue: Record<string, string> = {
+    'Never': 'never',
+    'Rarely': '1_2_times_per_week',
+    'Occasionally': '1_2_times_per_week', 
+    'Regularly': 'every_other_day',
+    'Daily': 'everyday',
+    'never': 'never',
+    'everyday': 'everyday',
+    'every_other_day': 'every_other_day',
+    '1_2_times_per_week': '1_2_times_per_week',
+  };
+  
+  // Map cannabis methods to API values
+  const methodToApiValue: Record<string, string> = {
+    'never': 'never',
+    'smoking': 'smoking_joints',
+    'vaping': 'vaporizing',
+    'edibles': 'ingestion',
+    'oils': 'ingestion',
+    'topicals': 'topical',
+    'smoking_joints': 'smoking_joints',
+    'vaporizing': 'vaporizing',
+    'ingestion': 'ingestion',
+    'topical': 'topical',
+  };
+  
+  // Transform conditions to API values
+  const transformConditions = (conditions: string[] | undefined): string[] => {
+    if (!conditions || conditions.length === 0) return [];
+    return conditions
+      .map(c => conditionToApiValue[c.toLowerCase()] || c.toLowerCase().replace(/\s+/g, '_'))
+      .filter(Boolean);
+  };
+  
+  // Transform medications to API values
+  const transformMedications = (meds: string[] | undefined): string[] => {
+    if (!meds || meds.length === 0) return [];
+    return meds
+      .map(m => medicationToApiValue[m.toLowerCase()] || m.toLowerCase())
+      .filter(Boolean);
+  };
+  
+  // Build medicalHistory5 (diagnosed conditions) - maps to API multi-select
+  const diagnosedConditions = mh.medicalHistory5 || 
+    (mh.psychosisHistory === 'yes' ? ['schizophrenia'] : ['none']);
+  
+  // Build medicalHistory14 (cannabis methods)
+  const cannabisMethods = (mh.medicalHistory14 || ['never']).map(
+    m => methodToApiValue[m] || m
+  );
+  
   const payload: LegacyClientPayload = {
-    firstName: formData.personal.firstName,
-    lastName: formData.personal.lastName,
-    email: formData.personal.email.toLowerCase(),
+    firstName: formData.personal.firstName.trim(),
+    lastName: formData.personal.lastName.trim(),
+    email: formData.personal.email.toLowerCase().trim(),
     phoneCode: phoneInfo.phoneCode,
     phoneCountryCode: phoneInfo.phoneCountryCode,
     contactNumber: phoneInfo.contactNumber,
     shipping: {
-      address1: formData.address.street,
-      address2: '',
-      city: formData.address.city,
-      state: formData.address.state || '',
+      address1: formData.address.street.trim(),
+      city: formData.address.city.trim(),
+      state: formData.address.state?.trim() || formData.address.city.trim(),
       country: formData.address.country,
       countryCode: countryCode,
-      postalCode: formData.address.postalCode,
+      postalCode: formData.address.postalCode.trim(),
     },
     medicalRecord: {
       dob: formData.personal.dateOfBirth, // Already in YYYY-MM-DD format
       gender: formData.personal.gender || 'prefer_not_to_say',
-      medicalHistory0: mh.medicalHistory0 ?? false,
-      medicalHistory1: mh.medicalHistory1 ?? false,
-      medicalHistory2: mh.medicalHistory2 ?? false,
-      medicalHistory3: mh.medicalHistory3 ?? false,
-      medicalHistory4: mh.medicalHistory4 ?? false,
-      medicalHistory5: normalizeArrayField(mh.medicalHistory5, ['none']),
-      medicalHistory6: mh.medicalHistory6 ?? false,
-      medicalHistory7: normalizeArrayField(mh.medicalHistory7, ['none']),
-      medicalHistory7Relation: 'none',
-      medicalHistory8: false,
-      medicalHistory9: mh.medicalHistory9 ?? false,
-      medicalHistory10: mh.medicalHistory10 ?? false,
-      medicalHistory11: mh.medicalHistory11 ?? '0',
-      medicalHistory12: mh.medicalHistory12 ?? false,
-      medicalHistory13: mh.medicalHistory13?.toLowerCase() || 'never',
-      medicalHistory14: normalizeArrayField(mh.medicalHistory14, ['never']),
-      medicalHistory15: 'none',
-      medicalHistory16: false,
-      medicalConditions: mh.medicalConditions,
-      otherMedicalCondition: mh.otherMedicalCondition,
-      medicinesTreatments: mh.medicinesTreatments,
-      otherMedicalTreatments: mh.otherMedicalTreatments,
+      // Required boolean flags - map from safety gates and individual fields
+      medicalHistory0: mh.heartProblems === 'yes' || mh.medicalHistory0 === true,
+      medicalHistory1: mh.medicalHistory1 === true,
+      medicalHistory2: mh.medicalHistory2 === true,
+      medicalHistory3: mh.medicalHistory3 === true,
+      medicalHistory4: mh.psychosisHistory === 'yes' || mh.medicalHistory4 === true,
+      medicalHistory5: diagnosedConditions.length > 0 ? diagnosedConditions : ['none'],
+      medicalHistory6: mh.medicalHistory6 === true,
+      medicalHistory7: mh.medicalHistory7 || ['none'],
+      medicalHistory7Relation: mh.medicalHistory7Relation || 'none',
+      medicalHistory8: mh.medicalHistory8 === true,
+      medicalHistory9: mh.medicalHistory9 === true,
+      medicalHistory10: mh.medicalHistory10 === true,
+      medicalHistory11: mh.medicalHistory11 || '0',
+      medicalHistory12: mh.medicalHistory12 === true,
+      medicalHistory13: frequencyToApiValue[mh.medicalHistory13 || 'never'] || 'never',
+      medicalHistory14: cannabisMethods.length > 0 ? cannabisMethods : ['never'],
+      medicalHistory15: mh.medicalHistory15,
+      medicalHistory16: mh.cannabisReaction === 'yes' || mh.medicalHistory16 === true,
     },
   };
+  
+  // Add optional medicalConditions (transformed from conditions array)
+  const apiConditions = transformConditions(mh.conditions || mh.medicalConditions);
+  if (apiConditions.length > 0) {
+    payload.medicalRecord.medicalConditions = apiConditions;
+  }
+  
+  // Add optional otherMedicalCondition
+  if (mh.otherMedicalCondition?.trim()) {
+    payload.medicalRecord.otherMedicalCondition = mh.otherMedicalCondition.trim();
+  }
+  
+  // Add optional medicinesTreatments (transformed from medications array)
+  const apiMedications = transformMedications(mh.medications || mh.medicinesTreatments);
+  if (apiMedications.length > 0) {
+    payload.medicalRecord.medicinesTreatments = apiMedications;
+  }
+  
+  // Add optional otherMedicalTreatments
+  if (mh.otherMedicalTreatments?.trim()) {
+    payload.medicalRecord.otherMedicalTreatments = mh.otherMedicalTreatments.trim();
+  }
+  
+  // Add optional prescriptionsSupplements
+  if (mh.prescriptionsSupplements?.trim()) {
+    payload.medicalRecord.prescriptionsSupplements = mh.prescriptionsSupplements.trim();
+  }
   
   // Conditionally add clientBusiness if user selected "I am a business"
   if (formData.business?.isBusiness && formData.business.businessName) {
@@ -485,9 +620,9 @@ export function buildLegacyClientPayload(formData: {
       businessType: formData.business.businessType || 'other',
       name: formData.business.businessName,
       address1: formData.business.businessAddress1 || '',
-      address2: formData.business.businessAddress2 || '',
+      address2: formData.business.businessAddress2,
       city: formData.business.businessCity || '',
-      state: formData.business.businessState || '',
+      state: formData.business.businessState,
       country: businessCountry,
       countryCode: toAlpha3(businessCountry),
       postalCode: formData.business.businessPostalCode || '',

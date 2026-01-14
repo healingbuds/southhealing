@@ -148,7 +148,7 @@ const addressSchema = z.object({
   country: z.string().min(2, 'Country is required'),
 });
 
-// Legacy medical history schema matching WordPress DAPP API
+// Medical history schema matching exact Dr. Green API requirements
 const medicalHistorySchema = z.object({
   // Safety gates - Yes/No required (stored as string for radio buttons)
   heartProblems: z.enum(['yes', 'no'], { required_error: 'This field is required' }),
@@ -158,19 +158,22 @@ const medicalHistorySchema = z.object({
   conditions: z.array(z.string()).default([]),
   // Current medications - checkbox array
   medications: z.array(z.string()).default([]),
-  // Legacy fields kept for API compatibility
+  // Required boolean fields
   medicalHistory1: z.boolean().default(false), // Cancer treatment
   medicalHistory2: z.boolean().default(false), // Immunosuppressants
   medicalHistory3: z.boolean().default(false), // Liver disease
-  medicalHistory6: z.boolean().default(false), // Suicidal history
+  medicalHistory6: z.boolean().default(false), // Suicidal history (optional per API)
+  medicalHistory8: z.boolean().default(false), // Drug abuse history
   medicalHistory9: z.boolean().default(false), // Alcohol abuse history
   medicalHistory10: z.boolean().default(false), // Drug services care history
   medicalHistory11: z.string().default('0'), // Alcohol units per week
   medicalHistory12: z.boolean().default(false), // Using cannabis to reduce other meds
-  medicalHistory13: z.string().default('Never'), // How often cannabis used
-  medicalHistory14: z.array(z.string()).default(['never']), // How cannabis used
-  medicalHistory15: z.string().max(500).optional(), // Additional notes
-  medicalHistory16: z.boolean().default(false), // Pregnant or breastfeeding
+  medicalHistory13: z.string().default('never'), // How often cannabis used (API values)
+  medicalHistory14: z.array(z.string()).default(['never']), // How cannabis used (API values)
+  medicalHistory15: z.string().max(500).optional(), // Cannabis amount per day
+  otherMedicalCondition: z.string().max(500).optional(), // Other condition text
+  otherMedicalTreatments: z.string().max(500).optional(), // Other treatment text
+  prescriptionsSupplements: z.string().max(1000).optional(), // Current prescriptions
 });
 
 const medicalSchema = z.object({
@@ -229,33 +232,58 @@ const countries = [
   { code: 'GB', name: 'United Kingdom' },
 ];
 
-// Specific condition options (checkbox grid)
+// Medical condition options - EXACT API VALUES per Dr. Green spec
 const conditionOptions = [
   { value: 'adhd', label: 'ADHD' },
   { value: 'agoraphobia', label: 'Agoraphobia' },
   { value: 'anxiety', label: 'Anxiety' },
-  { value: 'depression', label: 'Depression' },
-  { value: 'tourettes', label: 'Tourettes' },
-  { value: 'ptsd', label: 'PTSD' },
-  { value: 'ocd', label: 'OCD' },
-  { value: 'chronic_pain', label: 'Chronic Pain' },
-  { value: 'insomnia', label: 'Insomnia' },
-  { value: 'fibromyalgia', label: 'Fibromyalgia' },
-  { value: 'migraines', label: 'Migraines' },
+  { value: 'appetite_disorders', label: 'Appetite Disorders' },
   { value: 'arthritis', label: 'Arthritis' },
+  { value: 'autistic_spectrum_disorder', label: 'Autistic Spectrum Disorder' },
+  { value: 'back_and_neck_pain', label: 'Back & Neck Pain' },
+  { value: 'bipolar', label: 'Bipolar' },
+  { value: 'chronic_and_long_term_pain', label: 'Chronic/Long-term Pain' },
+  { value: 'chronic_fatigue_syndrome', label: 'Chronic Fatigue Syndrome' },
+  { value: 'cluster_headaches', label: 'Cluster Headaches' },
+  { value: 'complex_regional_pain_syndrome', label: 'Complex Regional Pain Syndrome' },
+  { value: 'depression', label: 'Depression' },
+  { value: 'endometriosis', label: 'Endometriosis' },
+  { value: 'epilepsy', label: 'Epilepsy' },
+  { value: 'fibromyalgia', label: 'Fibromyalgia' },
+  { value: 'irritable_bowel_syndrome', label: 'Irritable Bowel Syndrome' },
+  { value: 'migraine', label: 'Migraine' },
+  { value: 'multiple_sclerosis_pain_and_muscle_spasm', label: 'Multiple Sclerosis' },
+  { value: 'nerve_pain', label: 'Nerve Pain' },
+  { value: 'ocd', label: 'OCD' },
+  { value: 'parkinsons_disease', label: "Parkinson's Disease" },
+  { value: 'post_traumatic_stress_disorder', label: 'PTSD' },
+  { value: 'sciatica', label: 'Sciatica' },
+  { value: 'sleep_disorders', label: 'Sleep Disorders/Insomnia' },
+  { value: 'tourette_syndrome', label: 'Tourette Syndrome' },
+  { value: 'trigeminal_neuralgia', label: 'Trigeminal Neuralgia' },
+  { value: 'other_medical_condition', label: 'Other' },
 ];
 
-// Specific medication options (checkbox grid)
+// Medication options - EXACT API VALUES per Dr. Green spec
 const medicationOptions = [
+  { value: 'amitriptyline', label: 'Amitriptyline' },
+  { value: 'codeine', label: 'Codeine' },
+  { value: 'diazepam', label: 'Diazepam' },
+  { value: 'diclofenac', label: 'Diclofenac' },
+  { value: 'fluoxetine', label: 'Fluoxetine' },
+  { value: 'gabapentin', label: 'Gabapentin' },
+  { value: 'lorazepam', label: 'Lorazepam' },
+  { value: 'melatonin', label: 'Melatonin' },
+  { value: 'mirtazapine', label: 'Mirtazapine' },
+  { value: 'morphine', label: 'Morphine' },
+  { value: 'naproxen', label: 'Naproxen' },
+  { value: 'oxycodone', label: 'Oxycodone' },
+  { value: 'sertraline', label: 'Sertraline' },
+  { value: 'tramadol', label: 'Tramadol' },
   { value: 'venlafaxine', label: 'Venlafaxine' },
   { value: 'zolpidem', label: 'Zolpidem' },
   { value: 'zopiclone', label: 'Zopiclone' },
-  { value: 'sertraline', label: 'Sertraline' },
-  { value: 'fluoxetine', label: 'Fluoxetine' },
-  { value: 'gabapentin', label: 'Gabapentin' },
-  { value: 'pregabalin', label: 'Pregabalin' },
-  { value: 'amitriptyline', label: 'Amitriptyline' },
-  { value: 'none', label: 'None of the above' },
+  { value: 'other_prescribed_medicines_treatments', label: 'Other' },
 ];
 
 // Legacy medical history field labels for additional checkboxes
@@ -264,27 +292,27 @@ const medicalHistoryFields = [
   { key: 'medicalHistory2', label: 'Taking immunosuppressants', description: 'Medications that suppress the immune system' },
   { key: 'medicalHistory3', label: 'History of liver disease', description: 'Including hepatitis, cirrhosis, or fatty liver' },
   { key: 'medicalHistory6', label: 'History of suicidal thoughts or self-harm', description: 'Past or current suicidal ideation' },
+  { key: 'medicalHistory8', label: 'History of drug abuse or dependency', description: 'Including heroin, cocaine, prescription drug abuse' },
   { key: 'medicalHistory9', label: 'History of alcohol abuse', description: 'Past or current alcohol dependency' },
   { key: 'medicalHistory10', label: 'History of drug services care', description: 'Previous treatment for substance abuse' },
   { key: 'medicalHistory12', label: 'Using cannabis to reduce other medications', description: 'Seeking to reduce reliance on other prescribed medications' },
-  { key: 'medicalHistory16', label: 'Pregnant or breastfeeding', description: 'Currently pregnant or nursing' },
 ] as const;
 
+// Cannabis frequency options - EXACT API VALUES
 const cannabisUsageOptions = [
-  { value: 'Never', label: 'Never used' },
-  { value: 'Rarely', label: 'Rarely (few times a year)' },
-  { value: 'Occasionally', label: 'Occasionally (monthly)' },
-  { value: 'Regularly', label: 'Regularly (weekly)' },
-  { value: 'Daily', label: 'Daily' },
+  { value: 'never', label: 'Never used' },
+  { value: '1_2_times_per_week', label: 'Occasionally (1-2 times/week)' },
+  { value: 'every_other_day', label: 'Regularly (every other day)' },
+  { value: 'everyday', label: 'Daily' },
 ];
 
+// Cannabis method options - EXACT API VALUES
 const cannabisMethodOptions = [
   { value: 'never', label: 'Never used' },
-  { value: 'smoking', label: 'Smoking' },
-  { value: 'vaping', label: 'Vaping' },
-  { value: 'edibles', label: 'Edibles' },
-  { value: 'oils', label: 'Oils/Tinctures' },
-  { value: 'topicals', label: 'Topicals' },
+  { value: 'smoking_joints', label: 'Smoking (Joints)' },
+  { value: 'vaporizing', label: 'Vaporizing' },
+  { value: 'ingestion', label: 'Edibles/Oils/Tinctures' },
+  { value: 'topical', label: 'Topical' },
 ];
 
 export function ClientOnboarding() {
@@ -380,19 +408,22 @@ export function ClientOnboarding() {
       // Condition and medication arrays
       conditions: [],
       medications: [],
-      // Legacy fields
+      // Boolean fields
       medicalHistory1: false,
       medicalHistory2: false,
       medicalHistory3: false,
       medicalHistory6: false,
+      medicalHistory8: false,
       medicalHistory9: false,
       medicalHistory10: false,
       medicalHistory11: '0',
       medicalHistory12: false,
-      medicalHistory13: 'Never',
-      medicalHistory14: ['never'],
+      medicalHistory13: 'never', // API value
+      medicalHistory14: ['never'], // API value
       medicalHistory15: '',
-      medicalHistory16: false,
+      otherMedicalCondition: '',
+      otherMedicalTreatments: '',
+      prescriptionsSupplements: '',
     },
   });
 

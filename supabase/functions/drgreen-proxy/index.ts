@@ -1036,7 +1036,8 @@ serve(async (req) => {
       // LEGACY WORDPRESS-COMPATIBLE ENDPOINTS
       // ==========================================
       
-      // Create client with legacy payload format - transformed to new /dapp/clients schema
+      // Create client with legacy payload format - exact Dr. Green API schema
+      // Per API docs: POST /dapp/clients with exact field structure
       case "create-client-legacy": {
         const legacyPayload = body?.payload;
         if (!legacyPayload) throw new Error("Payload is required for client creation");
@@ -1049,56 +1050,139 @@ serve(async (req) => {
           throw new Error("Name fields exceed maximum length");
         }
         
-        // Transform legacy payload to new /dapp/clients schema
-        // Legacy payload has nested structure: shipping.*, medicalRecord.*
+        // Extract nested objects from legacy payload
         const shipping = legacyPayload.shipping || {};
         const medicalRecord = legacyPayload.medicalRecord || {};
         
-        const dappPayload = {
-          transaction_metadata: {
-            source: "Healingbuds_Web_Store",
-            timestamp: new Date().toISOString(),
-            flow_type: "Legacy_Onboarding_v1"
-          },
-          user_identity: {
-            first_name: String(legacyPayload.firstName || "").slice(0, 100),
-            last_name: String(legacyPayload.lastName || "").slice(0, 100),
+        // Build EXACT payload structure per Dr. Green API documentation
+        // Required fields only - omit optional fields if empty/undefined
+        const dappPayload: Record<string, unknown> = {
+          // Required personal fields
+          firstName: String(legacyPayload.firstName || "").trim(),
+          lastName: String(legacyPayload.lastName || "").trim(),
+          email: String(legacyPayload.email || "").toLowerCase().trim(),
+          phoneCode: String(legacyPayload.phoneCode || "+351"),
+          phoneCountryCode: String(legacyPayload.phoneCountryCode || "PT").toUpperCase(),
+          contactNumber: String(legacyPayload.contactNumber || ""),
+          
+          // Required shipping object (with required fields)
+          shipping: {
+            address1: String(shipping.address1 || "").trim(),
+            city: String(shipping.city || "").trim(),
+            state: String(shipping.state || shipping.city || "").trim(),
+            country: String(shipping.country || "Portugal").trim(),
+            countryCode: String(shipping.countryCode || "PRT").toUpperCase(),
+            postalCode: String(shipping.postalCode || "").trim(),
+          } as Record<string, string>,
+          
+          // Required medicalRecord object
+          medicalRecord: {
             dob: String(medicalRecord.dob || ""),
-            email: String(legacyPayload.email || "").toLowerCase().slice(0, 255),
-            phone_number: String(legacyPayload.contactNumber || "").slice(0, 20)
-          },
-          eligibility_results: {
-            age_verified: true,
-            region_eligible: true,
-            postal_code: String(shipping.postalCode || "").slice(0, 20),
-            country_code: String(shipping.countryCode || "PRT").slice(0, 3),
-            declared_medical_patient: medicalRecord.medicalHistory3 === true
-          },
-          shipping_address: {
-            street: String(shipping.address1 || "").slice(0, 200),
-            city: String(shipping.city || "").slice(0, 100),
-            postal_code: String(shipping.postalCode || "").slice(0, 20),
-            country: String(shipping.countryCode || "PRT").slice(0, 3)
-          },
-          medical_record: {
-            conditions: Array.isArray(medicalRecord.medicalConditions) 
-              ? medicalRecord.medicalConditions.join(", ") 
-              : String(medicalRecord.medicalConditions || "").slice(0, 2000),
-            current_medications: Array.isArray(medicalRecord.medicinesTreatments)
-              ? medicalRecord.medicinesTreatments.join(", ")
-              : String(medicalRecord.medicalHistory13 || "").slice(0, 1000),
-            allergies: "",
-            previous_cannabis_use: medicalRecord.medicalHistory0 === true
-          },
-          kyc_requirements: {
-            document_type: "Government_ID",
-            id_country: String(shipping.countryCode || "PRT").slice(0, 3),
-            selfie_required: true,
-            liveness_check: "active"
-          }
+            gender: String(medicalRecord.gender || "prefer_not_to_say"),
+            // Required boolean flags (medicalHistory 0-4, 8-10, 12)
+            medicalHistory0: medicalRecord.medicalHistory0 === true,
+            medicalHistory1: medicalRecord.medicalHistory1 === true,
+            medicalHistory2: medicalRecord.medicalHistory2 === true,
+            medicalHistory3: medicalRecord.medicalHistory3 === true,
+            medicalHistory4: medicalRecord.medicalHistory4 === true,
+            medicalHistory8: medicalRecord.medicalHistory8 === true,
+            medicalHistory9: medicalRecord.medicalHistory9 === true,
+            medicalHistory10: medicalRecord.medicalHistory10 === true,
+            medicalHistory12: medicalRecord.medicalHistory12 === true,
+            // Required array fields
+            medicalHistory5: Array.isArray(medicalRecord.medicalHistory5) && medicalRecord.medicalHistory5.length > 0
+              ? medicalRecord.medicalHistory5
+              : ["none"],
+            medicalHistory14: Array.isArray(medicalRecord.medicalHistory14) && medicalRecord.medicalHistory14.length > 0
+              ? medicalRecord.medicalHistory14
+              : ["never"],
+            // Required string fields
+            medicalHistory13: String(medicalRecord.medicalHistory13 || "never").toLowerCase(),
+          } as Record<string, unknown>,
         };
         
-        // Enhanced logging for debugging - log BEFORE API call
+        // Add optional shipping fields only if present (per API note: omit empty optional fields)
+        if (shipping.address2 && String(shipping.address2).trim()) {
+          (dappPayload.shipping as Record<string, string>).address2 = String(shipping.address2).trim();
+        }
+        if (shipping.landmark && String(shipping.landmark).trim()) {
+          (dappPayload.shipping as Record<string, string>).landmark = String(shipping.landmark).trim();
+        }
+        
+        // Add optional medicalRecord fields only if present
+        const mr = dappPayload.medicalRecord as Record<string, unknown>;
+        
+        // medicalConditions array (optional)
+        if (Array.isArray(medicalRecord.medicalConditions) && medicalRecord.medicalConditions.length > 0) {
+          mr.medicalConditions = medicalRecord.medicalConditions;
+        }
+        // otherMedicalCondition string (optional)
+        if (medicalRecord.otherMedicalCondition && String(medicalRecord.otherMedicalCondition).trim()) {
+          mr.otherMedicalCondition = String(medicalRecord.otherMedicalCondition).trim();
+        }
+        // medicinesTreatments array (optional)
+        if (Array.isArray(medicalRecord.medicinesTreatments) && medicalRecord.medicinesTreatments.length > 0) {
+          mr.medicinesTreatments = medicalRecord.medicinesTreatments;
+        }
+        // otherMedicalTreatments string (optional)
+        if (medicalRecord.otherMedicalTreatments && String(medicalRecord.otherMedicalTreatments).trim()) {
+          mr.otherMedicalTreatments = String(medicalRecord.otherMedicalTreatments).trim();
+        }
+        // medicalHistory6 boolean (optional)
+        if (medicalRecord.medicalHistory6 !== undefined) {
+          mr.medicalHistory6 = medicalRecord.medicalHistory6 === true;
+        }
+        // medicalHistory7 array (optional)
+        if (Array.isArray(medicalRecord.medicalHistory7) && medicalRecord.medicalHistory7.length > 0) {
+          mr.medicalHistory7 = medicalRecord.medicalHistory7;
+          // medicalHistory7Relation is only included if medicalHistory7 exists and doesn't contain "none"
+          const hasNone = medicalRecord.medicalHistory7.some((v: string) => 
+            String(v).toLowerCase() === 'none'
+          );
+          if (!hasNone && medicalRecord.medicalHistory7Relation) {
+            mr.medicalHistory7Relation = String(medicalRecord.medicalHistory7Relation);
+          }
+        }
+        // medicalHistory11 string (optional - alcohol units)
+        if (medicalRecord.medicalHistory11 && String(medicalRecord.medicalHistory11) !== '0') {
+          mr.medicalHistory11 = String(medicalRecord.medicalHistory11);
+        }
+        // medicalHistory15 string (optional - cannabis amount)
+        if (medicalRecord.medicalHistory15 && String(medicalRecord.medicalHistory15).trim()) {
+          mr.medicalHistory15 = String(medicalRecord.medicalHistory15).trim();
+        }
+        // medicalHistory16 boolean (optional - cannabis reaction)
+        if (medicalRecord.medicalHistory16 !== undefined) {
+          mr.medicalHistory16 = medicalRecord.medicalHistory16 === true;
+        }
+        // prescriptionsSupplements string (optional)
+        if (medicalRecord.prescriptionsSupplements && String(medicalRecord.prescriptionsSupplements).trim()) {
+          mr.prescriptionsSupplements = String(medicalRecord.prescriptionsSupplements).trim();
+        }
+        
+        // Add clientBusiness only if provided (entire object is optional)
+        if (legacyPayload.clientBusiness && legacyPayload.clientBusiness.name) {
+          const cb = legacyPayload.clientBusiness;
+          const clientBusiness: Record<string, string> = {};
+          
+          // Add only non-empty business fields
+          if (cb.businessType) clientBusiness.businessType = String(cb.businessType);
+          if (cb.name) clientBusiness.name = String(cb.name);
+          if (cb.address1) clientBusiness.address1 = String(cb.address1);
+          if (cb.address2) clientBusiness.address2 = String(cb.address2);
+          if (cb.landmark) clientBusiness.landmark = String(cb.landmark);
+          if (cb.city) clientBusiness.city = String(cb.city);
+          if (cb.state) clientBusiness.state = String(cb.state);
+          if (cb.country) clientBusiness.country = String(cb.country);
+          if (cb.countryCode) clientBusiness.countryCode = String(cb.countryCode);
+          if (cb.postalCode) clientBusiness.postalCode = String(cb.postalCode);
+          
+          if (Object.keys(clientBusiness).length > 0) {
+            dappPayload.clientBusiness = clientBusiness;
+          }
+        }
+        
+        // Enhanced logging for debugging
         console.log("[create-client-legacy] ========== CLIENT CREATION START ==========");
         console.log("[create-client-legacy] Timestamp:", new Date().toISOString());
         console.log("[create-client-legacy] API credentials check:", {
@@ -1107,17 +1191,21 @@ serve(async (req) => {
           apiKeyLength: Deno.env.get("DRGREEN_API_KEY")?.length || 0,
           privateKeyLength: Deno.env.get("DRGREEN_PRIVATE_KEY")?.length || 0,
         });
-        console.log("[create-client-legacy] Payload summary:", {
-          email: dappPayload.user_identity.email?.slice(0, 5) + '***',
-          countryCode: dappPayload.eligibility_results.country_code,
-          hasShippingAddress: !!dappPayload.shipping_address.street,
-        });
+        console.log("[create-client-legacy] Payload structure keys:", Object.keys(dappPayload));
+        console.log("[create-client-legacy] Shipping keys:", Object.keys(dappPayload.shipping as object));
+        console.log("[create-client-legacy] MedicalRecord keys:", Object.keys(dappPayload.medicalRecord as object));
+        console.log("[create-client-legacy] Has clientBusiness:", !!dappPayload.clientBusiness);
+        console.log("[create-client-legacy] Payload (sanitized):", JSON.stringify({
+          ...dappPayload,
+          email: (dappPayload.email as string)?.slice(0, 5) + '***',
+          contactNumber: '***',
+        }, null, 2).slice(0, 1500));
         
-        logInfo("Creating client with transformed legacy payload", {
+        logInfo("Creating client with exact API payload structure", {
           hasApiKey: !!Deno.env.get("DRGREEN_API_KEY"),
           hasPrivateKey: !!Deno.env.get("DRGREEN_PRIVATE_KEY"),
-          email: dappPayload.user_identity.email?.slice(0, 5) + '***',
-          countryCode: dappPayload.eligibility_results.country_code,
+          countryCode: (dappPayload.shipping as Record<string, string>).countryCode,
+          hasClientBusiness: !!dappPayload.clientBusiness,
         });
         
         // Call API with detailed logging enabled
@@ -1145,11 +1233,12 @@ serve(async (req) => {
           console.log("[create-client-legacy] Full error body:", respBody);
           
           if (response.status === 401) {
-            console.log("[create-client-legacy] DIAGNOSIS: Authentication failed - check API key/signature");
+            console.log("[create-client-legacy] DIAGNOSIS: Authentication failed - signature mismatch or invalid API key");
           } else if (response.status === 422) {
-            console.log("[create-client-legacy] DIAGNOSIS: Validation error - check payload format");
+            console.log("[create-client-legacy] DIAGNOSIS: Validation error - payload structure mismatch");
+            console.log("[create-client-legacy] Check: field names, required fields, option values");
           } else if (response.status === 403) {
-            console.log("[create-client-legacy] DIAGNOSIS: Permission denied - check account permissions");
+            console.log("[create-client-legacy] DIAGNOSIS: Permission denied - account lacks access");
           }
           
           logError("Client creation failed", {
@@ -1159,73 +1248,13 @@ serve(async (req) => {
         } else {
           console.log("[create-client-legacy] SUCCESS: Client created successfully");
           
-          // ========== DETAILED RESPONSE STRUCTURE LOGGING ==========
-          // This helps identify the exact field names for clientId and kycLink
+          // Parse and normalize the response for frontend consumption
           try {
             const rawData = JSON.parse(respBody);
             
-            // Log the COMPLETE raw response structure
-            console.log("[create-client-legacy] ========== RAW RESPONSE STRUCTURE ==========");
-            console.log("[create-client-legacy] Raw response type:", typeof rawData);
             console.log("[create-client-legacy] Raw response keys:", Object.keys(rawData));
-            console.log("[create-client-legacy] Full raw response (first 2000 chars):", JSON.stringify(rawData, null, 2).slice(0, 2000));
             
-            // Check for 'client' nested object
-            if (rawData.client) {
-              console.log("[create-client-legacy] ========== NESTED 'client' OBJECT ==========");
-              console.log("[create-client-legacy] client object type:", typeof rawData.client);
-              console.log("[create-client-legacy] client object keys:", Object.keys(rawData.client));
-              console.log("[create-client-legacy] client.id:", rawData.client.id);
-              console.log("[create-client-legacy] client.kycLink:", rawData.client.kycLink);
-              console.log("[create-client-legacy] client.kyc_link:", rawData.client.kyc_link);
-              console.log("[create-client-legacy] client.isKYCVerified:", rawData.client.isKYCVerified);
-              console.log("[create-client-legacy] client.is_kyc_verified:", rawData.client.is_kyc_verified);
-              console.log("[create-client-legacy] client.adminApproval:", rawData.client.adminApproval);
-              console.log("[create-client-legacy] client.admin_approval:", rawData.client.admin_approval);
-              console.log("[create-client-legacy] Full client object:", JSON.stringify(rawData.client, null, 2).slice(0, 1500));
-            }
-            
-            // Check for 'data' nested object (alternative structure)
-            if (rawData.data) {
-              console.log("[create-client-legacy] ========== NESTED 'data' OBJECT ==========");
-              console.log("[create-client-legacy] data object type:", typeof rawData.data);
-              console.log("[create-client-legacy] data object keys:", Object.keys(rawData.data));
-              console.log("[create-client-legacy] Full data object:", JSON.stringify(rawData.data, null, 2).slice(0, 1500));
-            }
-            
-            // Check for top-level fields
-            console.log("[create-client-legacy] ========== TOP-LEVEL FIELDS ==========");
-            console.log("[create-client-legacy] rawData.id:", rawData.id);
-            console.log("[create-client-legacy] rawData.clientId:", rawData.clientId);
-            console.log("[create-client-legacy] rawData.client_id:", rawData.client_id);
-            console.log("[create-client-legacy] rawData.kycLink:", rawData.kycLink);
-            console.log("[create-client-legacy] rawData.kyc_link:", rawData.kyc_link);
-            console.log("[create-client-legacy] rawData.isKYCVerified:", rawData.isKYCVerified);
-            console.log("[create-client-legacy] rawData.is_kyc_verified:", rawData.is_kyc_verified);
-            console.log("[create-client-legacy] rawData.adminApproval:", rawData.adminApproval);
-            console.log("[create-client-legacy] rawData.admin_approval:", rawData.admin_approval);
-            console.log("[create-client-legacy] rawData.status:", rawData.status);
-            console.log("[create-client-legacy] rawData.success:", rawData.success);
-            console.log("[create-client-legacy] rawData.message:", rawData.message);
-            
-            // Check for any field containing 'kyc' or 'link' (case insensitive search)
-            console.log("[create-client-legacy] ========== KYC-RELATED FIELD SEARCH ==========");
-            const findKycFields = (obj: Record<string, unknown>, prefix = ''): void => {
-              for (const [key, value] of Object.entries(obj)) {
-                const fullKey = prefix ? `${prefix}.${key}` : key;
-                const lowerKey = key.toLowerCase();
-                if (lowerKey.includes('kyc') || lowerKey.includes('link') || lowerKey.includes('verification')) {
-                  console.log(`[create-client-legacy] Found KYC-related field: ${fullKey} =`, value);
-                }
-                if (value && typeof value === 'object' && !Array.isArray(value)) {
-                  findKycFields(value as Record<string, unknown>, fullKey);
-                }
-              }
-            };
-            findKycFields(rawData);
-            
-            // Parse and normalize the response for frontend consumption
-            // Try multiple possible paths for clientId and kycLink
+            // Extract clientId and kycLink from various possible response structures
             const normalizedResponse = {
               success: true,
               clientId: rawData.client?.id || rawData.data?.id || rawData.clientId || rawData.client_id || rawData.id,
@@ -1235,16 +1264,12 @@ serve(async (req) => {
               raw: rawData,
             };
             
-            console.log("[create-client-legacy] ========== NORMALIZED RESPONSE ==========");
             console.log("[create-client-legacy] Extracted clientId:", normalizedResponse.clientId || 'NOT FOUND');
-            console.log("[create-client-legacy] Extracted kycLink:", normalizedResponse.kycLink ? `${String(normalizedResponse.kycLink).slice(0, 50)}...` : 'NOT FOUND');
-            console.log("[create-client-legacy] Extracted isKYCVerified:", normalizedResponse.isKYCVerified);
-            console.log("[create-client-legacy] Extracted adminApproval:", normalizedResponse.adminApproval);
+            console.log("[create-client-legacy] Extracted kycLink:", normalizedResponse.kycLink ? 'PRESENT' : 'NOT FOUND');
             
             logInfo("Client creation normalized response", {
               hasClientId: !!normalizedResponse.clientId,
               hasKycLink: !!normalizedResponse.kycLink,
-              clientIdSource: rawData.client?.id ? 'client.id' : rawData.data?.id ? 'data.id' : rawData.id ? 'id' : 'unknown',
             });
             
             // Return normalized response directly
@@ -1253,9 +1278,7 @@ serve(async (req) => {
               headers: { ...corsHeaders, "Content-Type": "application/json" },
             });
           } catch (parseError) {
-            console.log("[create-client-legacy] ========== PARSE ERROR ==========");
             console.log("[create-client-legacy] Failed to parse response:", parseError);
-            console.log("[create-client-legacy] Raw response body:", respBody);
             // Fall through to default response handling
           }
         }
