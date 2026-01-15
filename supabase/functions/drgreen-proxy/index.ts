@@ -3,6 +3,15 @@ import { encode as base64Encode } from "https://deno.land/std@0.168.0/encoding/b
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import * as secp256k1 from "https://esm.sh/@noble/secp256k1@2.1.0";
 import { sha256 } from "https://esm.sh/@noble/hashes@1.4.0/sha256";
+import { hmac } from "https://esm.sh/@noble/hashes@1.4.0/hmac";
+
+// Initialize secp256k1 with the required HMAC-SHA256 function
+// This is required for signing operations in the noble library
+secp256k1.etc.hmacSha256Sync = (key: Uint8Array, ...messages: Uint8Array[]) => {
+  const h = hmac.create(sha256, key);
+  for (const msg of messages) h.update(msg);
+  return h.digest();
+};
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
