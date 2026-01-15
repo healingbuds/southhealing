@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      articles: {
+        Row: {
+          author: string | null
+          category: string | null
+          content: string
+          created_at: string | null
+          featured_image: string | null
+          id: string
+          is_featured: boolean | null
+          published_at: string | null
+          slug: string
+          summary: string
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          author?: string | null
+          category?: string | null
+          content: string
+          created_at?: string | null
+          featured_image?: string | null
+          id?: string
+          is_featured?: boolean | null
+          published_at?: string | null
+          slug: string
+          summary: string
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          author?: string | null
+          category?: string | null
+          content?: string
+          created_at?: string | null
+          featured_image?: string | null
+          id?: string
+          is_featured?: boolean | null
+          published_at?: string | null
+          slug?: string
+          summary?: string
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       dosage_logs: {
         Row: {
           consumption_method: string
