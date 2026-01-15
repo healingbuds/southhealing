@@ -41,6 +41,7 @@ import { BatchImageGenerator } from "@/components/admin/BatchImageGenerator";
 import { KYCJourneyViewer } from "@/components/admin/KYCJourneyViewer";
 import { AdminEmailTrigger } from "@/components/admin/AdminEmailTrigger";
 import { ApiDebugPanel } from "@/components/admin/ApiDebugPanel";
+import { ApiTestRunner } from "@/components/admin/ApiTestRunner";
 import { useAccount, useDisconnect, useBalance, useChainId } from "wagmi";
 import { useDrGreenKeyOwnership } from "@/hooks/useNFTOwnership";
 import { useWallet } from "@/context/WalletContext";
@@ -648,6 +649,11 @@ const AdminDashboard = () => {
         {/* Manual Email Trigger */}
         <div className="mb-12">
           <AdminEmailTrigger />
+        </div>
+
+        {/* API Test Runner */}
+        <div className="mb-12">
+          <ApiTestRunner />
         </div>
 
         {/* API Debug Panel */}

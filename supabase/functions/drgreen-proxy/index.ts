@@ -115,6 +115,54 @@ const AUTH_ONLY_ACTIONS: string[] = ['get-user-me'];
 // Uses first 16 chars of DRGREEN_PRIVATE_KEY as the debug secret
 const DEBUG_ACTIONS = ['create-client-legacy'];
 
+// Retry configuration for transient failures
+const RETRY_CONFIG = {
+  maxRetries: 3,
+  initialDelayMs: 500,
+  maxDelayMs: 5000,
+  backoffMultiplier: 2,
+  retryableStatusCodes: [408, 429, 500, 502, 503, 504],
+};
+
+/**
+ * Sleep helper for retry delays
+ */
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/**
+ * Calculate delay with exponential backoff and jitter
+ */
+function calculateBackoffDelay(attempt: number): number {
+  const baseDelay = RETRY_CONFIG.initialDelayMs * Math.pow(RETRY_CONFIG.backoffMultiplier, attempt);
+  const jitter = Math.random() * 0.3 * baseDelay; // Add up to 30% jitter
+  return Math.min(baseDelay + jitter, RETRY_CONFIG.maxDelayMs);
+}
+
+/**
+ * Check if an error or status code is retryable
+ */
+function isRetryable(error: unknown, statusCode?: number): boolean {
+  // Network errors are retryable
+  if (error instanceof Error) {
+    const message = error.message.toLowerCase();
+    if (message.includes('timeout') || 
+        message.includes('network') || 
+        message.includes('econnreset') ||
+        message.includes('fetch failed')) {
+      return true;
+    }
+  }
+  
+  // Specific status codes are retryable
+  if (statusCode && RETRY_CONFIG.retryableStatusCodes.includes(statusCode)) {
+    return true;
+  }
+  
+  return false;
+}
+
 function getDebugSecret(): string | null {
   const privateKey = Deno.env.get("DRGREEN_PRIVATE_KEY");
   if (!privateKey || privateKey.length < 16) return null;
@@ -713,8 +761,52 @@ async function signPayloadWithMode(payload: string, secretKey: string, _useDecod
 }
 
 /**
+ * Retry wrapper for API requests with exponential backoff
+ */
+async function withRetry<T>(
+  operation: () => Promise<T>,
+  operationName: string,
+  isResponseRetryable?: (response: T) => boolean
+): Promise<T> {
+  let lastError: unknown;
+  
+  for (let attempt = 0; attempt <= RETRY_CONFIG.maxRetries; attempt++) {
+    try {
+      const result = await operation();
+      
+      // Check if the response itself indicates a retryable condition
+      if (isResponseRetryable && isResponseRetryable(result)) {
+        if (attempt < RETRY_CONFIG.maxRetries) {
+          const delay = calculateBackoffDelay(attempt);
+          logWarn(`${operationName}: Retryable response, attempt ${attempt + 1}/${RETRY_CONFIG.maxRetries + 1}, waiting ${Math.round(delay)}ms`);
+          await sleep(delay);
+          continue;
+        }
+      }
+      
+      return result;
+    } catch (error) {
+      lastError = error;
+      
+      if (!isRetryable(error) || attempt >= RETRY_CONFIG.maxRetries) {
+        throw error;
+      }
+      
+      const delay = calculateBackoffDelay(attempt);
+      logWarn(`${operationName}: Retry attempt ${attempt + 1}/${RETRY_CONFIG.maxRetries}, waiting ${Math.round(delay)}ms`, {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      await sleep(delay);
+    }
+  }
+  
+  throw lastError;
+}
+
+/**
  * Make authenticated request to Dr Green API with body signing (Method A)
  * Used for: POST, DELETE, and singular GET endpoints
+ * Includes automatic retry with exponential backoff for transient failures
  */
 async function drGreenRequestBody(
   endpoint: string,
@@ -770,48 +862,56 @@ async function drGreenRequestBody(
   const url = `${DRGREEN_API_URL}${endpoint}`;
   logInfo(`API request: ${method} ${endpoint}`);
   
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
-  
-  try {
-    const response = await fetch(url, {
-      method,
-      headers,
-      body: method !== "GET" && method !== "HEAD" ? payload : undefined,
-      signal: controller.signal,
-    });
-    
-    clearTimeout(timeoutId);
-    
-    // Enhanced 401 error analysis when enabled
-    if (response.status === 401 && enableDetailedLogging) {
-      const clonedResp = response.clone();
-      const errorBody = await clonedResp.text();
-      console.log("[API-DEBUG] ========== 401 UNAUTHORIZED ANALYSIS ==========");
-      console.log("[API-DEBUG] Response status:", response.status);
-      console.log("[API-DEBUG] Response headers:", JSON.stringify(Object.fromEntries(response.headers.entries())));
-      console.log("[API-DEBUG] Error body:", errorBody);
-      console.log("[API-DEBUG] Possible causes:");
-      console.log("[API-DEBUG]   1. API key not properly Base64 encoded");
-      console.log("[API-DEBUG]   2. Private key incorrect or mismatched");
-      console.log("[API-DEBUG]   3. Account lacks permission for this endpoint");
-      console.log("[API-DEBUG]   4. Wrong environment (sandbox vs production)");
-      console.log("[API-DEBUG]   5. IP not whitelisted");
-    }
-    
-    return response;
-  } catch (error: unknown) {
-    clearTimeout(timeoutId);
-    if (error instanceof Error && error.name === 'AbortError') {
-      throw new Error('API request timed out. Please try again.');
-    }
-    throw error;
-  }
+  // Wrap the fetch in retry logic
+  return withRetry(
+    async () => {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
+      
+      try {
+        const response = await fetch(url, {
+          method,
+          headers,
+          body: method !== "GET" && method !== "HEAD" ? payload : undefined,
+          signal: controller.signal,
+        });
+        
+        clearTimeout(timeoutId);
+        
+        // Enhanced 401 error analysis when enabled
+        if (response.status === 401 && enableDetailedLogging) {
+          const clonedResp = response.clone();
+          const errorBody = await clonedResp.text();
+          console.log("[API-DEBUG] ========== 401 UNAUTHORIZED ANALYSIS ==========");
+          console.log("[API-DEBUG] Response status:", response.status);
+          console.log("[API-DEBUG] Response headers:", JSON.stringify(Object.fromEntries(response.headers.entries())));
+          console.log("[API-DEBUG] Error body:", errorBody);
+          console.log("[API-DEBUG] Possible causes:");
+          console.log("[API-DEBUG]   1. API key not properly Base64 encoded");
+          console.log("[API-DEBUG]   2. Private key incorrect or mismatched");
+          console.log("[API-DEBUG]   3. Account lacks permission for this endpoint");
+          console.log("[API-DEBUG]   4. Wrong environment (sandbox vs production)");
+          console.log("[API-DEBUG]   5. IP not whitelisted");
+        }
+        
+        return response;
+      } catch (error: unknown) {
+        clearTimeout(timeoutId);
+        if (error instanceof Error && error.name === 'AbortError') {
+          throw new Error('API request timed out. Please try again.');
+        }
+        throw error;
+      }
+    },
+    `${method} ${endpoint}`,
+    (response: Response) => isRetryable(null, response.status)
+  );
 }
 
 /**
  * Make authenticated request to Dr Green API with query string signing (Method B)
  * Used for: GET list endpoints (strains list, carts list, etc.)
+ * Includes automatic retry with exponential backoff for transient failures
  */
 async function drGreenRequestQuery(
   endpoint: string,
@@ -857,33 +957,40 @@ async function drGreenRequestQuery(
   const url = `${DRGREEN_API_URL}${endpoint}?${queryString}`;
   logInfo(`API request: GET ${endpoint}`);
   
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
-  
-  try {
-    const response = await fetch(url, {
-      method: "GET",
-      headers,
-      signal: controller.signal,
-    });
-    
-    clearTimeout(timeoutId);
-    
-    if (response.status === 401 && enableDetailedLogging) {
-      console.log("[API-DEBUG] ========== QUERY 401 ANALYSIS ==========");
-      console.log("[API-DEBUG] Status:", response.status);
-      const errorBody = await response.clone().text();
-      console.log("[API-DEBUG] Error body:", errorBody);
-    }
-    
-    return response;
-  } catch (error: unknown) {
-    clearTimeout(timeoutId);
-    if (error instanceof Error && error.name === 'AbortError') {
-      throw new Error('API request timed out. Please try again.');
-    }
-    throw error;
-  }
+  // Wrap the fetch in retry logic
+  return withRetry(
+    async () => {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
+      
+      try {
+        const response = await fetch(url, {
+          method: "GET",
+          headers,
+          signal: controller.signal,
+        });
+        
+        clearTimeout(timeoutId);
+        
+        if (response.status === 401 && enableDetailedLogging) {
+          console.log("[API-DEBUG] ========== QUERY 401 ANALYSIS ==========");
+          console.log("[API-DEBUG] Status:", response.status);
+          const errorBody = await response.clone().text();
+          console.log("[API-DEBUG] Error body:", errorBody);
+        }
+        
+        return response;
+      } catch (error: unknown) {
+        clearTimeout(timeoutId);
+        if (error instanceof Error && error.name === 'AbortError') {
+          throw new Error('API request timed out. Please try again.');
+        }
+        throw error;
+      }
+    },
+    `GET ${endpoint}`,
+    (response: Response) => isRetryable(null, response.status)
+  );
 }
 
 /**
