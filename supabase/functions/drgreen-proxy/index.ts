@@ -274,7 +274,29 @@ async function generatePrivateKeySignature(
   let keyDerBytes: Uint8Array;
   const decodedAsText = new TextDecoder().decode(decodedSecretBytes);
 
-  if (decodedAsText.includes('-----BEGIN')) {
+  // Log key format detection for debugging
+  const hasPemHeader = decodedAsText.includes('-----BEGIN');
+  const pemHeaderMatch = decodedAsText.match(/-----BEGIN ([A-Z0-9 ]+)-----/);
+  const pemType = pemHeaderMatch ? pemHeaderMatch[1] : 'UNKNOWN';
+  
+  logInfo('Private key format detection', {
+    hasPemHeader,
+    pemType,
+    decodedLength: decodedSecretBytes.length,
+    firstBytes: Array.from(decodedSecretBytes.slice(0, 20)).map(b => b.toString(16).padStart(2, '0')).join(' '),
+    textPreview: decodedAsText.substring(0, 50).replace(/[^\x20-\x7E]/g, '.'),
+  });
+
+  if (hasPemHeader) {
+    // Check if it's PKCS#1 (RSA PRIVATE KEY) vs PKCS#8 (PRIVATE KEY)
+    if (pemType === 'RSA PRIVATE KEY') {
+      logError('PKCS#1 key detected - must convert to PKCS#8 format', {
+        pemType,
+        hint: 'Run: openssl pkcs8 -topk8 -inform PEM -outform PEM -nocrypt -in key.pem -out pkcs8_key.pem',
+      });
+      throw new Error('Private key is PKCS#1 format. Please convert to PKCS#8 using: openssl pkcs8 -topk8 -inform PEM -outform PEM -nocrypt -in key.pem -out pkcs8_key.pem');
+    }
+    
     // Extract the PEM body (base64 DER)
     const pemBody = decodedAsText
       .replace(/-----BEGIN [A-Z0-9 ]+-----/g, '')
@@ -291,14 +313,24 @@ async function generatePrivateKeySignature(
     }
 
     keyDerBytes = base64ToBytes(pemBody);
-    logDebug('Private key decoded from Base64 PEM', {
+    logInfo('Private key decoded from Base64 PEM', {
+      pemType,
       derLength: keyDerBytes.length,
+      expectedRsaLength: 'RSA-2048 should be ~1190 bytes, RSA-4096 should be ~2350 bytes',
     });
   } else {
-    // Secret might be Base64(DER) already
+    // Secret might be Base64(DER) already - check ASN.1 structure
     keyDerBytes = decodedSecretBytes;
-    logDebug('Private key decoded from Base64 DER', {
+    
+    // PKCS#8 private keys start with SEQUENCE (0x30) followed by length
+    // PKCS#1 RSA keys also start with 0x30 but have different structure
+    const isAsn1Sequence = keyDerBytes[0] === 0x30;
+    
+    logInfo('Private key decoded from Base64 DER', {
       derLength: keyDerBytes.length,
+      isAsn1Sequence,
+      firstByte: keyDerBytes[0]?.toString(16),
+      hint: keyDerBytes.length < 500 ? 'Key seems too short for RSA-2048' : 'Length looks reasonable',
     });
   }
 
@@ -350,13 +382,35 @@ async function generatePrivateKeySignature(
         );
         logDebug('Successfully imported EC private key (P-384)');
       } catch (ec384Error) {
-        // Last resort: try raw HMAC (legacy fallback)
-        logWarn('Private key import failed, falling back to HMAC', {
-          rsaError: String(rsaError),
-          ecError: String(ecError),
-          ec384Error: String(ec384Error),
-        });
-        return generateHmacSignatureFallback(data, base64PrivateKey);
+        logDebug('EC P-384 import failed, trying P-521', { error: String(ec384Error) });
+
+        // Try EC key (P-521)
+        try {
+          cryptoKey = await crypto.subtle.importKey(
+            'pkcs8',
+            keyDerBytes.buffer as ArrayBuffer,
+            {
+              name: 'ECDSA',
+              namedCurve: 'P-521',
+            },
+            false,
+            ['sign']
+          );
+          logDebug('Successfully imported EC private key (P-521)');
+        } catch (ec521Error) {
+          // Last resort: try raw HMAC (legacy fallback)
+          logWarn('Private key import failed, falling back to HMAC', {
+            rsaError: String(rsaError),
+            ecError: String(ecError),
+            ec384Error: String(ec384Error),
+            ec521Error: String(ec521Error),
+            keyInfo: {
+              derLength: keyDerBytes.length,
+              hint: 'Key may be secp256k1 (not supported by WebCrypto) or corrupted',
+            },
+          });
+          return generateHmacSignatureFallback(data, base64PrivateKey);
+        }
       }
     }
   }
