@@ -1,10 +1,26 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import * as secp256k1 from "https://esm.sh/@noble/secp256k1@1.7.1";
+import { hmac } from "https://esm.sh/@noble/hashes@1.3.0/hmac";
+import { sha256 } from "https://esm.sh/@noble/hashes@1.3.0/sha256";
+
+// Configure noble secp256k1 to use hmac for signing
+secp256k1.utils.hmacSha256Sync = (key: Uint8Array, ...messages: Uint8Array[]) => {
+  const combined = new Uint8Array(messages.reduce((acc, m) => acc + m.length, 0));
+  let offset = 0;
+  for (const msg of messages) {
+    combined.set(msg, offset);
+    offset += msg.length;
+  }
+  return hmac(sha256, key, combined);
+};
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+type Environment = 'production' | 'staging';
 
 interface TestResult {
   name: string;
@@ -16,6 +32,7 @@ interface TestResult {
 
 interface TestSuiteResult {
   suite: string;
+  environment: Environment;
   timestamp: string;
   totalTests: number;
   passed: number;
@@ -25,7 +42,157 @@ interface TestSuiteResult {
   results: TestResult[];
 }
 
-// Helper to call drgreen-proxy
+// Environment configuration
+interface EnvConfig {
+  apiUrl: string;
+  apiKeyEnv: string;
+  privateKeyEnv: string;
+}
+
+const ENV_CONFIG: Record<Environment, EnvConfig> = {
+  production: {
+    apiUrl: 'https://api.drgreennft.com/api/v1',
+    apiKeyEnv: 'DRGREEN_API_KEY',
+    privateKeyEnv: 'DRGREEN_PRIVATE_KEY',
+  },
+  staging: {
+    apiUrl: 'https://budstack-backend-main-development.up.railway.app/api/v1',
+    apiKeyEnv: 'DRGREEN_STAGING_API_KEY',
+    privateKeyEnv: 'DRGREEN_STAGING_PRIVATE_KEY',
+  },
+};
+
+// Get environment config
+function getEnvConfig(env: Environment): EnvConfig {
+  return ENV_CONFIG[env];
+}
+
+// Check if environment is configured
+function isEnvironmentConfigured(env: Environment): { configured: boolean; apiKey: boolean; privateKey: boolean; apiUrl: string } {
+  const config = getEnvConfig(env);
+  const apiKey = Deno.env.get(config.apiKeyEnv);
+  const privateKey = Deno.env.get(config.privateKeyEnv);
+  
+  return {
+    configured: Boolean(apiKey && privateKey),
+    apiKey: Boolean(apiKey),
+    privateKey: Boolean(privateKey),
+    apiUrl: config.apiUrl,
+  };
+}
+
+// Helper: Base64 decode
+function base64ToBytes(base64: string): Uint8Array {
+  const binaryString = atob(base64);
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes;
+}
+
+// Helper: Sign request payload for Dr. Green API
+async function signPayload(payload: string, env: Environment): Promise<string | null> {
+  const config = getEnvConfig(env);
+  const privateKeyB64 = Deno.env.get(config.privateKeyEnv);
+  
+  if (!privateKeyB64) {
+    console.error(`[SIGN] No private key found for ${env}`);
+    return null;
+  }
+  
+  try {
+    // Decode PEM-encoded key
+    const pemContent = new TextDecoder().decode(base64ToBytes(privateKeyB64));
+    const keyMatch = pemContent.match(/-----BEGIN (?:EC )?PRIVATE KEY-----\s*([\s\S]+?)\s*-----END (?:EC )?PRIVATE KEY-----/);
+    
+    if (!keyMatch) {
+      console.error('[SIGN] Invalid PEM format');
+      return null;
+    }
+    
+    const keyB64 = keyMatch[1].replace(/\s/g, '');
+    const keyDer = base64ToBytes(keyB64);
+    
+    // Extract private key from DER
+    let privateKeyBytes: Uint8Array;
+    if (keyDer.length === 32) {
+      privateKeyBytes = keyDer;
+    } else if (keyDer.length >= 36 && keyDer[0] === 0x30) {
+      const ecPrivateKeyStart = keyDer.indexOf(0x04, 5);
+      if (ecPrivateKeyStart !== -1 && keyDer[ecPrivateKeyStart + 1] === 0x20) {
+        privateKeyBytes = keyDer.slice(ecPrivateKeyStart + 2, ecPrivateKeyStart + 2 + 32);
+      } else {
+        privateKeyBytes = keyDer.slice(-32);
+      }
+    } else {
+      privateKeyBytes = keyDer.slice(-32);
+    }
+    
+    // Sign the payload
+    const payloadBytes = new TextEncoder().encode(payload);
+    const payloadHash = sha256(payloadBytes);
+    const signature = secp256k1.signSync(payloadHash, privateKeyBytes, { canonical: true });
+    
+    // Convert to base64
+    return btoa(String.fromCharCode(...signature));
+  } catch (error) {
+    console.error('[SIGN] Error signing payload:', error);
+    return null;
+  }
+}
+
+// Helper: Direct API call to Dr. Green
+async function callDrGreenApi(
+  endpoint: string, 
+  method: 'GET' | 'POST' = 'GET',
+  body?: Record<string, unknown>,
+  env: Environment = 'production'
+): Promise<{ success: boolean; data?: unknown; status?: number; error?: string }> {
+  const config = getEnvConfig(env);
+  const apiKey = Deno.env.get(config.apiKeyEnv);
+  
+  if (!apiKey) {
+    return { success: false, error: `API key not configured for ${env}` };
+  }
+  
+  try {
+    const url = `${config.apiUrl}${endpoint}`;
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'x-auth-apikey': apiKey,
+    };
+    
+    if (body) {
+      const payload = JSON.stringify(body);
+      const signature = await signPayload(payload, env);
+      if (signature) {
+        headers['x-auth-signature'] = signature;
+      }
+    }
+    
+    const response = await fetch(url, {
+      method,
+      headers,
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    
+    const data = await response.json().catch(() => ({}));
+    
+    return {
+      success: response.ok,
+      data,
+      status: response.status,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+}
+
+// Helper to call drgreen-proxy (for production tests that go through proxy)
 async function callProxy(action: string, data?: Record<string, unknown>, authHeader?: string): Promise<{
   success: boolean;
   data?: unknown;
@@ -94,10 +261,9 @@ async function runTest(
 }
 
 // ============================================
-// TEST DEFINITIONS
+// PRODUCTION TESTS (via proxy)
 // ============================================
 
-// Test 1: Health Check
 async function testHealthCheck(): Promise<{ success: boolean; message?: string; details?: Record<string, unknown> }> {
   const result = await callProxy('health-check');
   
@@ -119,7 +285,6 @@ async function testHealthCheck(): Promise<{ success: boolean; message?: string; 
   };
 }
 
-// Test 2: API Key Configuration
 async function testApiKeyConfiguration(): Promise<{ success: boolean; message?: string; details?: Record<string, unknown> }> {
   const result = await callProxy('health-check');
   
@@ -146,7 +311,6 @@ async function testApiKeyConfiguration(): Promise<{ success: boolean; message?: 
   };
 }
 
-// Test 3: Signature Generation (via connectivity check)
 async function testSignatureGeneration(): Promise<{ success: boolean; message?: string; details?: Record<string, unknown> }> {
   const result = await callProxy('health-check');
   
@@ -160,8 +324,6 @@ async function testSignatureGeneration(): Promise<{ success: boolean; message?: 
   
   const data = result.data as Record<string, unknown>;
   const apiConnectivity = data.apiConnectivity as Record<string, unknown> | undefined;
-  
-  // If API connectivity succeeded, signing is working
   const signingWorks = apiConnectivity?.success === true;
   
   return {
@@ -171,9 +333,7 @@ async function testSignatureGeneration(): Promise<{ success: boolean; message?: 
   };
 }
 
-// Test 4: Fetch Strains - verify from health check's API connectivity
 async function testFetchStrains(): Promise<{ success: boolean; message?: string; details?: Record<string, unknown> }> {
-  // Get strains via health check since it already does the signed request
   const result = await callProxy('health-check');
   
   if (!result.success) {
@@ -186,8 +346,6 @@ async function testFetchStrains(): Promise<{ success: boolean; message?: string;
   
   const data = result.data as Record<string, unknown>;
   const apiConnectivity = data.apiConnectivity as Record<string, unknown> | undefined;
-  
-  // Check if the strains endpoint was successfully called
   const strainsEndpointWorks = apiConnectivity?.success === true && 
                                 apiConnectivity?.endpoint === 'GET /strains' &&
                                 apiConnectivity?.status === 200;
@@ -199,7 +357,6 @@ async function testFetchStrains(): Promise<{ success: boolean; message?: string;
   };
 }
 
-// Test 5: Verify strains are synced to local database
 async function testLocalStrainDatabase(): Promise<{ success: boolean; message?: string; details?: Record<string, unknown> }> {
   const supabaseUrl = Deno.env.get('SUPABASE_URL');
   const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || Deno.env.get('SUPABASE_ANON_KEY');
@@ -218,47 +375,35 @@ async function testLocalStrainDatabase(): Promise<{ success: boolean; message?: 
     return {
       success: hasLocalStrains,
       message: hasLocalStrains ? `${strains.length} strains in local database` : 'No strains in local database - run sync',
-      details: { 
-        count: strains?.length || 0,
-        sample: strains?.slice(0, 3),
-      },
+      details: { count: strains?.length || 0, sample: strains?.slice(0, 3) },
     };
   } catch (err) {
-    const error = err as Error;
     return {
       success: false,
-      message: `Database query failed: ${error.message}`,
+      message: `Database query failed: ${(err as Error).message}`,
       details: {},
     };
   }
 }
 
-// Test 6: Client Creation Payload Validation (Mock)
 async function testClientPayloadValidation(): Promise<{ success: boolean; message?: string; details?: Record<string, unknown> }> {
-  // Test with intentionally invalid payload to verify validation
   const invalidPayload = {
-    firstName: '', // Empty - should fail
+    firstName: '',
     lastName: 'Test',
-    email: 'invalid-email', // Invalid format
+    email: 'invalid-email',
   };
   
   const result = await callProxy('Create-Client-Legacy', invalidPayload);
-  
-  // We expect this to fail with validation error, not server error
   const data = result.data as Record<string, unknown>;
   const hasValidationError = Boolean(data?.error || data?.message || !result.success);
   
   return {
     success: hasValidationError,
     message: hasValidationError ? 'Payload validation working correctly' : 'Validation may not be catching invalid data',
-    details: { 
-      expectedFailure: true,
-      response: data,
-    },
+    details: { expectedFailure: true, response: data },
   };
 }
 
-// Test 7: Check local client records
 async function testLocalClientDatabase(): Promise<{ success: boolean; message?: string; details?: Record<string, unknown> }> {
   const supabaseUrl = Deno.env.get('SUPABASE_URL');
   const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || Deno.env.get('SUPABASE_ANON_KEY');
@@ -276,32 +421,21 @@ async function testLocalClientDatabase(): Promise<{ success: boolean; message?: 
     
     return {
       success: tableExists,
-      message: tableExists 
-        ? `Client table accessible, ${clients?.length || 0} records` 
-        : 'Client table not accessible',
-      details: { 
-        count: clients?.length || 0,
-        sample: clients?.slice(0, 2),
-      },
+      message: tableExists ? `Client table accessible, ${clients?.length || 0} records` : 'Client table not accessible',
+      details: { count: clients?.length || 0, sample: clients?.slice(0, 2) },
     };
   } catch (err) {
-    const error = err as Error;
     return {
       success: false,
-      message: `Database query failed: ${error.message}`,
+      message: `Database query failed: ${(err as Error).message}`,
       details: {},
     };
   }
 }
 
-// Test 8: Error Response Format
 async function testErrorResponseFormat(): Promise<{ success: boolean; message?: string; details?: Record<string, unknown> }> {
-  // Call with invalid action to test error handling
   const result = await callProxy('Invalid-Action-That-Does-Not-Exist');
-  
   const data = result.data as Record<string, unknown>;
-  
-  // Should return structured error
   const hasErrorStructure = Boolean(data?.error || data?.message || data?.errorCode);
   
   return {
@@ -311,7 +445,6 @@ async function testErrorResponseFormat(): Promise<{ success: boolean; message?: 
   };
 }
 
-// Test 9: CORS Headers
 async function testCorsHeaders(): Promise<{ success: boolean; message?: string; details?: Record<string, unknown> }> {
   const supabaseUrl = Deno.env.get('SUPABASE_URL');
   const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY');
@@ -327,54 +460,42 @@ async function testCorsHeaders(): Promise<{ success: boolean; message?: string; 
     
     const corsHeader = response.headers.get('Access-Control-Allow-Origin');
     const allowHeaders = response.headers.get('Access-Control-Allow-Headers');
-    
     const hasCors = corsHeader === '*' || (corsHeader?.includes('example.com') ?? false);
     
     return {
       success: hasCors,
       message: hasCors ? 'CORS headers configured correctly' : 'CORS headers may be misconfigured',
-      details: { 
-        'Access-Control-Allow-Origin': corsHeader,
-        'Access-Control-Allow-Headers': allowHeaders,
-      },
+      details: { 'Access-Control-Allow-Origin': corsHeader, 'Access-Control-Allow-Headers': allowHeaders },
     };
   } catch (err) {
-    const error = err as Error;
     return {
       success: false,
-      message: `CORS test failed: ${error.message}`,
+      message: `CORS test failed: ${(err as Error).message}`,
       details: {},
     };
   }
 }
 
-// Test 10: Response Time Performance
 async function testResponseTime(): Promise<{ success: boolean; message?: string; details?: Record<string, unknown> }> {
   const start = Date.now();
   await callProxy('health-check');
   const duration = Date.now() - start;
   
-  const isAcceptable = duration < 5000; // Under 5 seconds
-  const isFast = duration < 1000; // Under 1 second
+  const isAcceptable = duration < 5000;
+  const isFast = duration < 1000;
   
   return {
     success: isAcceptable,
     message: isFast ? `Fast response: ${duration}ms` : isAcceptable ? `Acceptable response: ${duration}ms` : `Slow response: ${duration}ms`,
-    details: { 
-      durationMs: duration,
-      threshold: '5000ms',
-      rating: isFast ? 'fast' : isAcceptable ? 'acceptable' : 'slow',
-    },
+    details: { durationMs: duration, threshold: '5000ms', rating: isFast ? 'fast' : isAcceptable ? 'acceptable' : 'slow' },
   };
 }
 
-// Test 11: Webhook Endpoint Accessible
 async function testWebhookEndpoint(): Promise<{ success: boolean; message?: string; details?: Record<string, unknown> }> {
   const supabaseUrl = Deno.env.get('SUPABASE_URL');
   const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY');
   
   try {
-    // Test OPTIONS request (CORS preflight)
     const optionsResponse = await fetch(`${supabaseUrl}/functions/v1/drgreen-webhook`, {
       method: 'OPTIONS',
       headers: {
@@ -389,32 +510,23 @@ async function testWebhookEndpoint(): Promise<{ success: boolean; message?: stri
     return {
       success: hasCors,
       message: hasCors ? 'Webhook endpoint accessible with CORS' : 'Webhook CORS may be misconfigured',
-      details: { 
-        status: optionsResponse.status,
-        corsHeader,
-      },
+      details: { status: optionsResponse.status, corsHeader },
     };
   } catch (err) {
-    const error = err as Error;
     return {
       success: false,
-      message: `Webhook endpoint test failed: ${error.message}`,
+      message: `Webhook endpoint test failed: ${(err as Error).message}`,
       details: {},
     };
   }
 }
 
-// Test 12: Webhook Payload Validation
 async function testWebhookPayloadValidation(): Promise<{ success: boolean; message?: string; details?: Record<string, unknown> }> {
   const supabaseUrl = Deno.env.get('SUPABASE_URL');
   const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY');
   
   try {
-    // Send invalid payload (missing required fields)
-    const invalidPayload = {
-      // Missing 'event' and 'timestamp'
-      clientId: 'test-client-123',
-    };
+    const invalidPayload = { clientId: 'test-client-123' };
     
     const response = await fetch(`${supabaseUrl}/functions/v1/drgreen-webhook`, {
       method: 'POST',
@@ -425,8 +537,6 @@ async function testWebhookPayloadValidation(): Promise<{ success: boolean; messa
       body: JSON.stringify(invalidPayload),
     });
     
-    // Should return 400 for invalid payload or 401 for missing signature
-    // Either indicates proper security validation is in place
     const rejectsInvalid = response.status === 400 || response.status === 401;
     
     return {
@@ -434,22 +544,17 @@ async function testWebhookPayloadValidation(): Promise<{ success: boolean; messa
       message: rejectsInvalid 
         ? `Webhook security active (${response.status === 401 ? 'signature required' : 'payload validated'})` 
         : `Unexpected response: ${response.status}`,
-      details: { 
-        status: response.status,
-        expectedStatuses: [400, 401],
-      },
+      details: { status: response.status, expectedStatuses: [400, 401] },
     };
   } catch (err) {
-    const error = err as Error;
     return {
       success: false,
-      message: `Webhook validation test failed: ${error.message}`,
+      message: `Webhook validation test failed: ${(err as Error).message}`,
       details: {},
     };
   }
 }
 
-// Test 13: KYC Journey Logs Table
 async function testKycJourneyLogsTable(): Promise<{ success: boolean; message?: string; details?: Record<string, unknown> }> {
   const supabaseUrl = Deno.env.get('SUPABASE_URL');
   const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || Deno.env.get('SUPABASE_ANON_KEY');
@@ -467,22 +572,132 @@ async function testKycJourneyLogsTable(): Promise<{ success: boolean; message?: 
     
     return {
       success: tableExists,
-      message: tableExists 
-        ? `KYC journey logs table accessible, ${logs?.length || 0} records` 
-        : 'KYC journey logs table not accessible',
-      details: { 
-        count: logs?.length || 0,
-        sample: logs?.slice(0, 2),
-      },
+      message: tableExists ? `KYC journey logs table accessible, ${logs?.length || 0} records` : 'KYC journey logs table not accessible',
+      details: { count: logs?.length || 0, sample: logs?.slice(0, 2) },
     };
   } catch (err) {
-    const error = err as Error;
     return {
       success: false,
-      message: `Database query failed: ${error.message}`,
+      message: `Database query failed: ${(err as Error).message}`,
       details: {},
     };
   }
+}
+
+// ============================================
+// STAGING-SPECIFIC TESTS
+// ============================================
+
+async function testStagingEnvironmentConfig(): Promise<{ success: boolean; message?: string; details?: Record<string, unknown> }> {
+  const config = isEnvironmentConfigured('staging');
+  
+  return {
+    success: config.configured,
+    message: config.configured 
+      ? 'Staging environment fully configured' 
+      : `Missing staging keys: ${!config.apiKey ? 'API_KEY ' : ''}${!config.privateKey ? 'PRIVATE_KEY' : ''}`,
+    details: { 
+      apiKeyPresent: config.apiKey,
+      privateKeyPresent: config.privateKey,
+      apiUrl: config.apiUrl,
+    },
+  };
+}
+
+async function testStagingDirectConnection(env: Environment): Promise<{ success: boolean; message?: string; details?: Record<string, unknown> }> {
+  const config = isEnvironmentConfigured(env);
+  
+  if (!config.configured) {
+    return {
+      success: false,
+      message: `${env} environment not configured`,
+      details: { configured: false },
+    };
+  }
+  
+  // Try to reach the API health endpoint
+  try {
+    const apiConfig = getEnvConfig(env);
+    const response = await fetch(`${apiConfig.apiUrl}/health`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    
+    const isReachable = response.ok || response.status === 404; // 404 means server is up but endpoint may differ
+    
+    return {
+      success: isReachable,
+      message: isReachable ? `${env} API reachable (${response.status})` : `${env} API not reachable`,
+      details: { 
+        status: response.status,
+        url: apiConfig.apiUrl,
+      },
+    };
+  } catch (err) {
+    return {
+      success: false,
+      message: `${env} API connection failed: ${(err as Error).message}`,
+      details: { error: (err as Error).message },
+    };
+  }
+}
+
+async function testStagingStrains(env: Environment): Promise<{ success: boolean; message?: string; details?: Record<string, unknown> }> {
+  const config = isEnvironmentConfigured(env);
+  
+  if (!config.configured) {
+    return {
+      success: false,
+      message: `${env} environment not configured`,
+      details: { configured: false },
+    };
+  }
+  
+  const result = await callDrGreenApi('/strains?take=5', 'GET', undefined, env);
+  
+  if (!result.success) {
+    return {
+      success: false,
+      message: `Failed to fetch strains from ${env}`,
+      details: { error: result.error, status: result.status },
+    };
+  }
+  
+  const data = result.data as { data?: unknown[] } | unknown[];
+  const strains = Array.isArray(data) ? data : (data as { data?: unknown[] })?.data || [];
+  
+  return {
+    success: Array.isArray(strains),
+    message: `${env} strains endpoint: ${Array.isArray(strains) ? strains.length : 0} strains returned`,
+    details: { 
+      count: Array.isArray(strains) ? strains.length : 0,
+      sample: Array.isArray(strains) ? strains.slice(0, 2) : null,
+    },
+  };
+}
+
+async function testStagingSignature(env: Environment): Promise<{ success: boolean; message?: string; details?: Record<string, unknown> }> {
+  const config = isEnvironmentConfigured(env);
+  
+  if (!config.configured) {
+    return {
+      success: false,
+      message: `${env} environment not configured`,
+      details: { configured: false },
+    };
+  }
+  
+  const testPayload = JSON.stringify({ test: true, timestamp: Date.now() });
+  const signature = await signPayload(testPayload, env);
+  
+  return {
+    success: Boolean(signature),
+    message: signature ? `${env} signature generation successful` : `${env} signature generation failed`,
+    details: { 
+      signatureGenerated: Boolean(signature),
+      signatureLength: signature?.length || 0,
+    },
+  };
 }
 
 // ============================================
@@ -497,30 +712,61 @@ serve(async (req) => {
   const suiteStart = Date.now();
   const results: TestResult[] = [];
   
-  console.log('[TEST SUITE] Starting Dr. Green API Proxy Tests');
+  // Parse request body for environment
+  let environment: Environment = 'production';
+  try {
+    const body = await req.json();
+    if (body.environment === 'staging') {
+      environment = 'staging';
+    }
+  } catch {
+    // Default to production if no body
+  }
+  
+  console.log(`[TEST SUITE] Starting Dr. Green API Tests (${environment})`);
 
-  // Run all tests
-  const tests = [
-    { name: '1. Health Check', fn: testHealthCheck },
-    { name: '2. API Key Configuration', fn: testApiKeyConfiguration },
-    { name: '3. Signature Generation', fn: testSignatureGeneration },
-    { name: '4. Strains API Endpoint', fn: testFetchStrains },
-    { name: '5. Local Strain Database', fn: testLocalStrainDatabase },
-    { name: '6. Client Payload Validation', fn: testClientPayloadValidation },
-    { name: '7. Local Client Database', fn: testLocalClientDatabase },
-    { name: '8. Error Response Format', fn: testErrorResponseFormat },
-    { name: '9. CORS Headers', fn: testCorsHeaders },
-    { name: '10. Response Time', fn: testResponseTime },
-    { name: '11. Webhook Endpoint', fn: testWebhookEndpoint },
-    { name: '12. Webhook Payload Validation', fn: testWebhookPayloadValidation },
-    { name: '13. KYC Journey Logs Table', fn: testKycJourneyLogsTable },
-  ];
-
-  for (const test of tests) {
-    console.log(`[TEST] Running: ${test.name}`);
-    const result = await runTest(test.name, test.fn);
-    results.push(result);
-    console.log(`[TEST] ${test.name}: ${result.status} (${result.duration}ms)`);
+  if (environment === 'production') {
+    // Production tests via proxy
+    const productionTests = [
+      { name: '1. Health Check', fn: testHealthCheck },
+      { name: '2. API Key Configuration', fn: testApiKeyConfiguration },
+      { name: '3. Signature Generation', fn: testSignatureGeneration },
+      { name: '4. Strains API Endpoint', fn: testFetchStrains },
+      { name: '5. Local Strain Database', fn: testLocalStrainDatabase },
+      { name: '6. Client Payload Validation', fn: testClientPayloadValidation },
+      { name: '7. Local Client Database', fn: testLocalClientDatabase },
+      { name: '8. Error Response Format', fn: testErrorResponseFormat },
+      { name: '9. CORS Headers', fn: testCorsHeaders },
+      { name: '10. Response Time', fn: testResponseTime },
+      { name: '11. Webhook Endpoint', fn: testWebhookEndpoint },
+      { name: '12. Webhook Payload Validation', fn: testWebhookPayloadValidation },
+      { name: '13. KYC Journey Logs Table', fn: testKycJourneyLogsTable },
+    ];
+    
+    for (const test of productionTests) {
+      console.log(`[TEST] Running: ${test.name}`);
+      const result = await runTest(test.name, test.fn);
+      results.push(result);
+      console.log(`[TEST] ${test.name}: ${result.status} (${result.duration}ms)`);
+    }
+  } else {
+    // Staging tests - direct API calls
+    const stagingTests = [
+      { name: '1. Staging Environment Config', fn: testStagingEnvironmentConfig },
+      { name: '2. Staging API Connectivity', fn: () => testStagingDirectConnection('staging') },
+      { name: '3. Staging Signature Generation', fn: () => testStagingSignature('staging') },
+      { name: '4. Staging Strains Endpoint', fn: () => testStagingStrains('staging') },
+      { name: '5. Local Strain Database', fn: testLocalStrainDatabase },
+      { name: '6. Local Client Database', fn: testLocalClientDatabase },
+      { name: '7. KYC Journey Logs Table', fn: testKycJourneyLogsTable },
+    ];
+    
+    for (const test of stagingTests) {
+      console.log(`[TEST] Running: ${test.name}`);
+      const result = await runTest(test.name, test.fn);
+      results.push(result);
+      console.log(`[TEST] ${test.name}: ${result.status} (${result.duration}ms)`);
+    }
   }
 
   const passed = results.filter(r => r.status === 'pass').length;
@@ -528,7 +774,8 @@ serve(async (req) => {
   const skipped = results.filter(r => r.status === 'skip').length;
 
   const suiteResult: TestSuiteResult = {
-    suite: 'Dr. Green API Proxy',
+    suite: `Dr. Green API (${environment})`,
+    environment,
     timestamp: new Date().toISOString(),
     totalTests: results.length,
     passed,

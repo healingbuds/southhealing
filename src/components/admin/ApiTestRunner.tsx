@@ -8,21 +8,25 @@ import {
   XCircle,
   AlertCircle,
   Clock,
-  RefreshCw,
   ChevronDown,
   ChevronUp,
   Zap,
   Server,
   Database,
   Shield,
-  Globe
+  Globe,
+  FlaskConical,
+  Radio
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
+
+type Environment = 'production' | 'staging';
 
 interface TestResult {
   name: string;
@@ -34,6 +38,7 @@ interface TestResult {
 
 interface TestSuiteResult {
   suite: string;
+  environment: Environment;
   timestamp: string;
   totalTests: number;
   passed: number;
@@ -54,10 +59,15 @@ const testIcons: Record<string, React.ElementType> = {
   '8. Error Response Format': AlertCircle,
   '9. CORS Headers': Globe,
   '10. Response Time': Clock,
+  '1. Staging Environment Config': FlaskConical,
+  '2. Staging API Connectivity': Radio,
+  '3. Staging Signature Generation': Zap,
+  '4. Staging Strains Endpoint': Globe,
 };
 
 export function ApiTestRunner() {
   const { toast } = useToast();
+  const [environment, setEnvironment] = useState<Environment>('production');
   const [isRunning, setIsRunning] = useState(false);
   const [results, setResults] = useState<TestSuiteResult | null>(null);
   const [expandedTests, setExpandedTests] = useState<Set<string>>(new Set());
@@ -69,7 +79,7 @@ export function ApiTestRunner() {
 
     try {
       const { data, error } = await supabase.functions.invoke('drgreen-api-tests', {
-        body: {},
+        body: { environment },
       });
 
       if (error) {
@@ -81,9 +91,10 @@ export function ApiTestRunner() {
 
       const passed = (data as TestSuiteResult).passed;
       const total = (data as TestSuiteResult).totalTests;
+      const env = (data as TestSuiteResult).environment;
 
       toast({
-        title: passed === total ? "All Tests Passed! ✓" : "Tests Complete",
+        title: passed === total ? `All ${env} Tests Passed! ✓` : `${env} Tests Complete`,
         description: `${passed}/${total} tests passed in ${(data as TestSuiteResult).duration}ms`,
         variant: passed === total ? "default" : "destructive",
       });
@@ -136,39 +147,77 @@ export function ApiTestRunner() {
   return (
     <Card className="border-2 border-dashed border-muted-foreground/20">
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-primary/10">
-              <Zap className="w-5 h-5 text-primary" />
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className={`p-2 rounded-lg ${environment === 'production' ? 'bg-primary/10' : 'bg-orange-500/10'}`}>
+                {environment === 'production' ? (
+                  <Zap className="w-5 h-5 text-primary" />
+                ) : (
+                  <FlaskConical className="w-5 h-5 text-orange-500" />
+                )}
+              </div>
+              <div>
+                <CardTitle className="text-lg">API Test Runner</CardTitle>
+                <CardDescription>
+                  Test Dr. Green API ({environment === 'production' ? 'Production' : 'Staging - Railway'})
+                </CardDescription>
+              </div>
             </div>
-            <div>
-              <CardTitle className="text-lg">API Test Runner</CardTitle>
-              <CardDescription>
-                Automated tests for Dr. Green API proxy
-              </CardDescription>
-            </div>
+            <Button
+              onClick={runTests}
+              disabled={isRunning}
+              className={`gap-2 ${environment === 'staging' ? 'bg-orange-600 hover:bg-orange-700' : ''}`}
+            >
+              {isRunning ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Running...
+                </>
+              ) : (
+                <>
+                  <Play className="w-4 h-4" />
+                  Run Tests
+                </>
+              )}
+            </Button>
           </div>
-          <Button
-            onClick={runTests}
-            disabled={isRunning}
-            className="gap-2"
-          >
-            {isRunning ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Running...
-              </>
-            ) : (
-              <>
-                <Play className="w-4 h-4" />
-                Run Tests
-              </>
-            )}
-          </Button>
+
+          {/* Environment Toggle */}
+          <Tabs value={environment} onValueChange={(v) => setEnvironment(v as Environment)}>
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="production" className="gap-2">
+                <Server className="w-4 h-4" />
+                Production
+              </TabsTrigger>
+              <TabsTrigger value="staging" className="gap-2">
+                <FlaskConical className="w-4 h-4" />
+                Staging (Railway)
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
         </div>
       </CardHeader>
 
       <CardContent className="space-y-6">
+        {/* Environment Badge */}
+        {results && (
+          <div className="flex items-center gap-2">
+            <Badge 
+              variant="outline" 
+              className={results.environment === 'production' 
+                ? 'bg-green-500/10 text-green-600 border-green-500/30' 
+                : 'bg-orange-500/10 text-orange-600 border-orange-500/30'
+              }
+            >
+              {results.environment === 'production' ? '🟢 Production' : '🟠 Staging'}
+            </Badge>
+            <span className="text-xs text-muted-foreground">
+              {results.environment === 'staging' ? 'Railway Development API' : 'Live Production API'}
+            </span>
+          </div>
+        )}
+
         {/* Summary Stats */}
         {results && (
           <motion.div
@@ -291,7 +340,10 @@ export function ApiTestRunner() {
             <Server className="w-12 h-12 mx-auto mb-3 opacity-30" />
             <p className="text-sm">Click "Run Tests" to verify API connectivity</p>
             <p className="text-xs mt-1 opacity-70">
-              Tests: health check, signing, strains, clients, CORS, performance
+              {environment === 'production' 
+                ? 'Tests: health check, signing, strains, clients, CORS, performance'
+                : 'Tests: staging config, Railway API connectivity, signature, strains'
+              }
             </p>
           </div>
         )}
@@ -300,11 +352,18 @@ export function ApiTestRunner() {
         {isRunning && (
           <div className="text-center py-12">
             <div className="relative w-16 h-16 mx-auto mb-4">
-              <Loader2 className="w-16 h-16 animate-spin text-primary/20" />
-              <Loader2 className="w-16 h-16 animate-spin text-primary absolute inset-0" style={{ animationDirection: 'reverse', animationDuration: '1.5s' }} />
+              <Loader2 className={`w-16 h-16 animate-spin ${environment === 'staging' ? 'text-orange-500/20' : 'text-primary/20'}`} />
+              <Loader2 
+                className={`w-16 h-16 animate-spin absolute inset-0 ${environment === 'staging' ? 'text-orange-500' : 'text-primary'}`} 
+                style={{ animationDirection: 'reverse', animationDuration: '1.5s' }} 
+              />
             </div>
-            <p className="text-sm text-muted-foreground">Running 10 API tests...</p>
-            <p className="text-xs text-muted-foreground/70 mt-1">This may take a few seconds</p>
+            <p className="text-sm text-muted-foreground">
+              Running {environment} API tests...
+            </p>
+            <p className="text-xs text-muted-foreground/70 mt-1">
+              {environment === 'staging' ? 'Testing Railway staging environment' : 'This may take a few seconds'}
+            </p>
           </div>
         )}
       </CardContent>
