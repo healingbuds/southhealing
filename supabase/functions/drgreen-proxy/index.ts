@@ -2410,9 +2410,34 @@ serve(async (req) => {
         );
     }
     
-    const data = await response.json();
+    // NOTE: Supabase functions client treats non-2xx as an error and surfaces
+    // "Edge function returned <status>". For admin dApp endpoints, a Dr. Green
+    // upstream 401 is a *permissions/config* issue (not the user's session) and
+    // should be returned as 200 with an explicit apiStatus so the UI can render
+    // a stable message instead of erroring.
+    let data: unknown;
+    try {
+      data = await response.json();
+    } catch {
+      data = { raw: await response.text().catch(() => '') };
+    }
+
     logInfo(`Response status: ${response.status}`);
-    
+
+    if (response.status === 401 && ADMIN_ACTIONS.includes(action)) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          apiStatus: 401,
+          error: 'drgreen_unauthorized',
+          message:
+            'Dr. Green API credentials are not authorized for dApp endpoints. Update DRGREEN_API_KEY and DRGREEN_PRIVATE_KEY with admin credentials.',
+          upstream: data,
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     return new Response(JSON.stringify(data), {
       status: response.status,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
