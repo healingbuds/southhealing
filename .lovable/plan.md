@@ -1,54 +1,179 @@
-# Plan: Fix Dr. Green API Signing for Admin Endpoints ✅ COMPLETE
 
-## Problem Summary
+# Add Confirmation Dialog for Client Approve/Reject Actions
 
-Several admin endpoints were returning **401 Unauthorized** because they used the wrong signature method. The Dr. Green API expects GET requests with query parameters to sign the **query string**, not an empty body.
+## Overview
 
-## ✅ Implementation Complete
+Add an AlertDialog confirmation step before approving or rejecting clients to prevent accidental actions. This is a critical safety feature for a medical cannabis platform where client verification has compliance implications.
 
-| Endpoint | Previous Method | Updated Method | Status |
-|----------|-----------------|----------------|--------|
-| `dapp-clients` | `drGreenRequest()` | `drGreenRequestQuery()` | ✅ 200 |
-| `dashboard-summary` | `drGreenRequest()` | `drGreenRequestQuery()` | ⚠️ 401 (API permission issue) |
-| `sales-summary` | `drGreenRequest()` | `drGreenRequestQuery()` | ⚠️ 401 (API permission issue) |
-| `dashboard-analytics` | `drGreenRequest()` | `drGreenRequestQuery()` | ✅ Fixed |
-| `dapp-orders` | `drGreenRequest()` | `drGreenRequestQuery()` | ✅ Fixed |
-| `dapp-carts` | `drGreenRequest()` | `drGreenRequestQuery()` | ✅ Fixed |
-| `dapp-nfts` | `drGreenRequest()` | `drGreenRequestQuery()` | ✅ Fixed |
-| `dapp-strains` | `drGreenRequest()` | `drGreenRequestQuery()` | ✅ Fixed |
-| `dapp-clients-list` | `drGreenRequest()` | `drGreenRequestQuery()` | ✅ Fixed |
-| `get-clients-summary` | Already correct | N/A | ✅ 200 |
-| `get-sales` | Already correct | N/A | ✅ 200 |
+---
 
-## New Features Added
+## Current Behavior
 
-### 1. useDrGreenClientSync Hook (`src/hooks/useDrGreenClientSync.ts`)
-- Fetches all clients from Dr. Green API
-- Syncs clients to local Supabase `drgreen_clients` table
-- Checks client KYC/approval status in real-time
-- Auto-links Supabase users to Dr. Green clients by email
+```text
+User clicks [Approve] -> handleApprove() executes immediately -> API call made
+User clicks [Reject]  -> handleReject() executes immediately  -> API call made
+```
 
-### 2. Updated Admin Dashboard
-- Uses `get-clients-summary` for live client counts (working endpoint)
-- Falls back to `dapp-clients` if summary fails
-- Shows 6 total clients with correct pending/verified counts
+## New Behavior
 
-## Working API Data
+```text
+User clicks [Approve] -> Confirmation Dialog opens -> User confirms -> handleApprove() -> API call
+User clicks [Reject]  -> Confirmation Dialog opens -> User confirms -> handleReject()  -> API call
+```
 
-**Live Client Summary:**
-- Total Clients: 6
-- PENDING: 6
-- VERIFIED: 0
-- REJECTED: 0
+---
 
-**Clients Retrieved:**
-1. Kayliegh Moutinho (kayliegh.sm@gmail.com) - KYC: ✅, Approval: PENDING
-2. Test Me (test9876@yopmail.com) - KYC: ❌, Approval: PENDING
-3. scott pahhh (testhb@yopmail.com) - KYC: ❌, Approval: PENDING
-4. Scott Scott (scott.k1@outllok.com) - KYC: ❌, Approval: PENDING
-5. John Demo - KYC: ❌, Approval: PENDING
-6. Test FlowUser - KYC: ❌, Approval: PENDING
+## UI Design
 
-## Note: Dashboard-Summary Endpoint
+### Approve Confirmation Dialog
 
-The `dashboard-summary` and `sales-summary` endpoints still return 401 even with correct signing. This is likely an **API permission issue** on the Dr. Green side (these may require elevated admin permissions that the current API key doesn't have). The Admin Dashboard now uses `get-clients-summary` as the primary data source which works correctly.
+```text
++----------------------------------------------------------+
+|                                                          |
+|   [Shield Icon] Approve Client?                          |
+|                                                          |
+|   Are you sure you want to approve                       |
+|   Kayliegh Moutinho (kayliegh.sm@gmail.com)?             |
+|                                                          |
+|   This will grant them access to purchase medical        |
+|   cannabis products through the platform.                |
+|                                                          |
+|                          [Cancel]  [Yes, Approve Client] |
++----------------------------------------------------------+
+```
+
+### Reject Confirmation Dialog
+
+```text
++----------------------------------------------------------+
+|                                                          |
+|   [Alert Icon] Reject Client?                            |
+|                                                          |
+|   Are you sure you want to reject                        |
+|   Kayliegh Moutinho (kayliegh.sm@gmail.com)?             |
+|                                                          |
+|   This will prevent them from purchasing products        |
+|   until they are re-approved.                            |
+|                                                          |
+|                          [Cancel]  [Yes, Reject Client]  |
++----------------------------------------------------------+
+```
+
+---
+
+## Technical Implementation
+
+### New State Variables
+
+```typescript
+// Dialog state
+const [confirmDialog, setConfirmDialog] = useState<{
+  open: boolean;
+  action: 'approve' | 'reject' | null;
+  client: DrGreenClient | null;
+}>({
+  open: false,
+  action: null,
+  client: null,
+});
+```
+
+### New Functions
+
+```typescript
+// Open confirmation dialog
+const openConfirmDialog = (client: DrGreenClient, action: 'approve' | 'reject') => {
+  setConfirmDialog({ open: true, action, client });
+};
+
+// Close confirmation dialog
+const closeConfirmDialog = () => {
+  setConfirmDialog({ open: false, action: null, client: null });
+};
+
+// Execute the confirmed action
+const executeConfirmedAction = async () => {
+  if (!confirmDialog.client || !confirmDialog.action) return;
+  
+  const { client, action } = confirmDialog;
+  const clientName = `${client.firstName} ${client.lastName}`;
+  
+  closeConfirmDialog();
+  
+  if (action === 'approve') {
+    await handleApprove(client.id, clientName);
+  } else {
+    await handleReject(client.id, clientName);
+  }
+};
+```
+
+### Button Changes
+
+Replace direct `onClick` handlers with dialog openers:
+
+```typescript
+// Before
+onClick={() => handleApprove(client.id, `${client.firstName} ${client.lastName}`)}
+
+// After
+onClick={() => openConfirmDialog(client, 'approve')}
+```
+
+---
+
+## Component Dependencies
+
+| Component | Source | Already Installed |
+|-----------|--------|-------------------|
+| `AlertDialog` | `@/components/ui/alert-dialog` | Yes |
+| `AlertDialogAction` | `@/components/ui/alert-dialog` | Yes |
+| `AlertDialogCancel` | `@/components/ui/alert-dialog` | Yes |
+| `AlertDialogContent` | `@/components/ui/alert-dialog` | Yes |
+| `AlertDialogDescription` | `@/components/ui/alert-dialog` | Yes |
+| `AlertDialogFooter` | `@/components/ui/alert-dialog` | Yes |
+| `AlertDialogHeader` | `@/components/ui/alert-dialog` | Yes |
+| `AlertDialogTitle` | `@/components/ui/alert-dialog` | Yes |
+
+---
+
+## Changes Summary
+
+### File to Modify
+
+`src/components/admin/AdminClientManager.tsx`
+
+### Modifications
+
+1. **Add import** for AlertDialog components from `@/components/ui/alert-dialog`
+
+2. **Add state** for tracking which client and action is being confirmed
+
+3. **Add helper functions** for opening/closing dialog and executing confirmed action
+
+4. **Replace button onClick handlers** to open confirmation dialog instead of direct execution
+
+5. **Add AlertDialog component** at the end of the JSX return with:
+   - Dynamic title based on action (Approve/Reject)
+   - Client name and email in description
+   - Appropriate warning message about the action's consequences
+   - Cancel button (closes dialog, no action)
+   - Confirm button (styled green for approve, red for reject)
+
+---
+
+## Action Button Styling
+
+| Action | Confirm Button Style |
+|--------|---------------------|
+| Approve | `bg-green-600 hover:bg-green-700 text-white` |
+| Reject | `bg-red-600 hover:bg-red-700 text-white` |
+
+---
+
+## Accessibility Considerations
+
+- AlertDialog traps focus automatically
+- Escape key closes the dialog
+- Screen reader announces dialog title and description
+- Cancel action is keyboard accessible
