@@ -42,6 +42,7 @@ import { BatchImageGenerator } from "@/components/admin/BatchImageGenerator";
 import { KYCJourneyViewer } from "@/components/admin/KYCJourneyViewer";
 import { AdminEmailTrigger } from "@/components/admin/AdminEmailTrigger";
 import { AdminClientImport } from "@/components/admin/AdminClientImport";
+import { AdminClientManager } from "@/components/admin/AdminClientManager";
 import { ApiDebugPanel } from "@/components/admin/ApiDebugPanel";
 import { ApiTestRunner } from "@/components/admin/ApiTestRunner";
 import { ApiComparisonDashboard } from "@/components/admin/ApiComparisonDashboard";
@@ -657,6 +658,11 @@ const AdminDashboard = () => {
               </Card>
             </motion.div>
           ))}
+        </div>
+
+        {/* Client Management */}
+        <div className="mb-12">
+          <AdminClientManager />
         </div>
 
         {/* AI Image Generator */}
