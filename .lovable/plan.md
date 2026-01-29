@@ -1,282 +1,215 @@
 
-# API Comparison Dashboard
+# Update API Integration with Official Dr. Green Documentation
 
 ## Overview
-Create a dedicated admin component that fetches data from both production and staging Dr. Green APIs simultaneously, displaying side-by-side comparisons for strains, clients, and orders. This enables administrators to verify data parity between environments and quickly identify discrepancies.
+Update the Dr. Green API integration to align with the comprehensive official documentation provided. This includes correcting the staging URL, adding missing API endpoints, and enhancing the comparison dashboard with new data types.
 
 ---
 
-## Architecture
+## Key Issues to Address
 
-```text
-+----------------------------------+
-|     ApiComparisonDashboard       |
-+----------------------------------+
-|  [Environment Selector Tabs]    |
-|  - Strains | Clients | Orders   |
-+----------------------------------+
-|  PRODUCTION    |    STAGING     |
-|  -----------   |   -----------  |
-|  Strain List   |   Strain List  |
-|  Client Count  |   Client Count |
-|  Order Stats   |   Order Stats  |
-+----------------------------------+
-|  [Comparison Summary]           |
-|  - Diff count, sync status      |
-+----------------------------------+
-```
+### 1. Staging URL Correction
+**Current**: `https://budstack-backend-main-development.up.railway.app/api/v1` (Railway dev)
+**Official**: `https://stage-api.drgreennft.com/api/v1` (Official staging)
 
----
+The Railway URL may be an internal development instance. The official staging URL should be used for proper staging comparisons.
 
-## Components to Create
+**Action**: Update `drgreen-comparison` and any staging proxy to support both:
+- Official staging: `https://stage-api.drgreennft.com/api/v1`
+- Railway dev: `https://budstack-backend-main-development.up.railway.app/api/v1` (optional/secondary)
 
-### 1. Main Component
-**`src/components/admin/ApiComparisonDashboard.tsx`**
+### 2. Missing API Endpoints
 
-A comprehensive comparison dashboard with:
-- Tabbed interface for switching between data types (Strains, Clients, Orders)
-- Side-by-side panels showing production vs staging data
-- Loading states for each environment independently
-- Error handling with clear environment indicators
-- Summary section showing differences/discrepancies
+| Endpoint | Method | Description | Status |
+|----------|--------|-------------|--------|
+| `/dapp/clients/summary` | GET | Client summary stats (PENDING/VERIFIED/REJECTED counts) | Missing |
+| `/dapp/sales` | GET | Sales data with filtering | Missing |
+| `/dapp/sales/summary` | GET | Sales summary by stage | Missing |
+| `/dapp/client/:clientId/orders` | GET | Orders for specific client | Missing |
+| `/user/me` | GET | Current user + primary NFT details | Exists (`get-user-me`) |
+| `/dapp/users/nfts` | GET | User's owned NFTs | Missing |
 
-### 2. Supporting Types
-**`src/types/comparison.ts`** (inline in component)
-
-```typescript
-interface ComparisonData {
-  production: { data: unknown; loading: boolean; error: string | null };
-  staging: { data: unknown; loading: boolean; error: string | null };
-}
-
-interface StrainComparison {
-  id: string;
-  name: string;
-  prodPrice?: number;
-  stagingPrice?: number;
-  prodAvailable?: boolean;
-  stagingAvailable?: boolean;
-  hasDiff: boolean;
+### 3. Response Structure Updates
+The documentation confirms the response format:
+```json
+{
+  "success": boolean,
+  "statusCode": number,
+  "message": string,
+  "data": { ... }
 }
 ```
 
----
-
-## Data Fetching Strategy
-
-### Edge Function Approach
-Create a new edge function **`drgreen-comparison`** that:
-1. Accepts an `environment` parameter (`production` | `staging`)
-2. Returns normalized data structure for comparison
-3. Handles authentication and signing for each environment
-
-Alternatively, reuse existing **`drgreen-api-tests`** edge function by adding a `comparison` action that fetches real data from both environments.
-
-### Frontend Hook
-Add a custom hook **`useApiComparison`** in `src/hooks/useApiComparison.ts`:
-
-```typescript
-function useApiComparison() {
-  const fetchFromEnvironment = async (env: 'production' | 'staging', dataType: string) => {
-    // Call edge function with environment parameter
-    // Return normalized data
-  };
-  
-  const fetchComparison = async (dataType: 'strains' | 'clients' | 'orders') => {
-    const [prodResult, stagingResult] = await Promise.all([
-      fetchFromEnvironment('production', dataType),
-      fetchFromEnvironment('staging', dataType),
-    ]);
-    return { production: prodResult, staging: stagingResult };
-  };
-  
-  return { fetchComparison };
-}
-```
-
----
-
-## UI Components Breakdown
-
-### Header Section
-- Title: "API Comparison Dashboard"
-- Description: "Compare production and staging environments side-by-side"
-- Refresh button to reload both environments
-- Last updated timestamp
-
-### Tab Navigation
-| Tab | Data Fetched | Key Metrics |
-|-----|--------------|-------------|
-| **Strains** | `get-strains` (countryCode: ZAF) | Name, THC/CBD, Price, Availability |
-| **Clients** | `dapp-clients` (take: 10) | ID, Name, Email, KYC Status |
-| **Orders** | `dapp-orders` (take: 10) | ID, Status, Amount, Date |
-
-### Comparison Panels
-Each panel shows:
-- Environment badge (green for Production, orange for Staging)
-- API endpoint URL
-- Response time
-- Data count
-- Scrollable data table
-
-### Difference Indicators
-- **Green**: Values match
-- **Red**: Values differ
-- **Yellow**: Missing in one environment
-- **Gray**: Field not comparable
-
-### Summary Footer
-- Total items in Production vs Staging
-- Number of differences found
-- Sync status recommendation
-
----
-
-## Edge Function Updates
-
-### Option A: New Edge Function
-Create **`supabase/functions/drgreen-comparison/index.ts`**:
-
-```typescript
-// Accepts: { environment, dataType, countryCode? }
-// Returns: { data, meta: { responseTime, itemCount, apiUrl } }
-
-serve(async (req) => {
-  const { environment, dataType, countryCode } = await req.json();
-  
-  const config = ENV_CONFIG[environment];
-  const apiKey = Deno.env.get(config.apiKeyEnv);
-  
-  // Fetch data based on dataType
-  switch (dataType) {
-    case 'strains':
-      return fetchStrains(config, countryCode);
-    case 'clients':
-      return fetchClients(config);
-    case 'orders':
-      return fetchOrders(config);
+And pagination structure:
+```json
+{
+  "pageMetaDto": {
+    "page": "1",
+    "take": "10",
+    "itemCount": 50,
+    "pageCount": 5,
+    "hasPreviousPage": false,
+    "hasNextPage": true
   }
-});
-```
-
-### Option B: Extend drgreen-proxy
-Add a comparison mode that automatically handles staging credentials:
-
-```typescript
-// In drgreen-proxy, add staging support:
-if (action === 'staging-get-strains') {
-  const stagingConfig = getEnvConfig('staging');
-  // Use staging credentials
 }
 ```
 
 ---
 
-## Implementation Files
+## Implementation Plan
 
-| File | Action | Description |
-|------|--------|-------------|
-| `src/components/admin/ApiComparisonDashboard.tsx` | **Create** | Main comparison UI component |
-| `src/hooks/useApiComparison.ts` | **Create** | Custom hook for fetching comparison data |
-| `supabase/functions/drgreen-comparison/index.ts` | **Create** | Edge function for environment-specific data fetching |
-| `src/pages/AdminDashboard.tsx` | **Update** | Add ApiComparisonDashboard component |
+### Phase 1: Update Staging Configuration
 
----
+**File**: `supabase/functions/drgreen-comparison/index.ts`
 
-## UI Mockup
-
-```text
-┌─────────────────────────────────────────────────────────────────┐
-│ 🔄 API Comparison Dashboard                    [↻ Refresh All] │
-│ Compare production and staging environments                     │
-├─────────────────────────────────────────────────────────────────┤
-│ [ Strains ]  [ Clients ]  [ Orders ]                            │
-├────────────────────────────┬────────────────────────────────────┤
-│ 🟢 PRODUCTION              │ 🟠 STAGING (Railway)               │
-│ api.drgreennft.com         │ budstack-backend-main-dev...       │
-│ Response: 234ms            │ Response: 456ms                    │
-├────────────────────────────┼────────────────────────────────────┤
-│ ┌──────────────────────┐   │ ┌──────────────────────┐           │
-│ │ Blue Dream    R1200  │   │ │ Blue Dream    R1200  │ ✓        │
-│ │ OG Kush       R1450  │   │ │ OG Kush       R1500  │ ⚠ Diff   │
-│ │ Sour Diesel   R1100  │   │ │ Sour Diesel   R1100  │ ✓        │
-│ │ ... (12 more)        │   │ │ ... (11 more)        │ ⚠ Count  │
-│ └──────────────────────┘   │ └──────────────────────┘           │
-├────────────────────────────┴────────────────────────────────────┤
-│ 📊 Summary: 15 items (Prod) vs 14 items (Staging) • 2 diffs     │
-└─────────────────────────────────────────────────────────────────┘
-```
-
----
-
-## Technical Considerations
-
-### CORS & Authentication
-- Both environments require cryptographic signing
-- Staging uses `DRGREEN_STAGING_*` secrets (already configured)
-- Edge function handles all signing server-side
-
-### Rate Limiting
-- Implement debounce on refresh (min 5 seconds between refreshes)
-- Show loading state per environment to indicate parallel fetching
-
-### Error Handling
-- If one environment fails, still show the other
-- Clear error messages indicating which environment failed
-- Retry button per environment
-
-### Caching
-- Optional: Cache comparison results for 60 seconds
-- Show "stale" indicator when viewing cached data
-
----
-
-## Integration with Admin Dashboard
-
-Add the comparison dashboard as a new section in `AdminDashboard.tsx`:
-
+1. Add support for official staging URL:
 ```typescript
-// In AdminDashboard.tsx
-import { ApiComparisonDashboard } from "@/components/admin/ApiComparisonDashboard";
-
-// After ApiTestRunner section:
-<ApiComparisonDashboard />
+const ENV_CONFIG = {
+  production: {
+    apiUrl: 'https://api.drgreennft.com/api/v1',
+    // ...
+  },
+  staging: {
+    apiUrl: 'https://stage-api.drgreennft.com/api/v1', // Official staging
+    // ...
+  },
+  railway: {
+    apiUrl: 'https://budstack-backend-main-development.up.railway.app/api/v1', // Dev
+    // ...
+  }
+};
 ```
 
+2. Add `environment` option to select between staging and railway dev.
+
+### Phase 2: Add Missing Actions to drgreen-proxy
+
+**File**: `supabase/functions/drgreen-proxy/index.ts`
+
+Add new action handlers:
+
+1. **`get-clients-summary`** → `GET /dapp/clients/summary`
+2. **`get-sales`** → `GET /dapp/sales` (with stage filter: LEADS, ONGOING, CLOSED)
+3. **`get-sales-summary`** → `GET /dapp/sales/summary`
+4. **`get-client-orders`** → `GET /dapp/client/:clientId/orders`
+5. **`get-user-nfts`** → `GET /dapp/users/nfts`
+
+### Phase 3: Update useDrGreenApi Hook
+
+**File**: `src/hooks/useDrGreenApi.ts`
+
+Add new methods:
+```typescript
+// Get client summary (PENDING/VERIFIED/REJECTED counts)
+const getClientsSummary = async () => {
+  return callProxy<{
+    summary: {
+      PENDING: number;
+      VERIFIED: number;
+      REJECTED: number;
+      totalCount: number;
+    };
+  }>('get-clients-summary');
+};
+
+// Get sales with optional stage filter
+const getSales = async (params?: {
+  stage?: 'LEADS' | 'ONGOING' | 'CLOSED';
+  page?: number;
+  take?: number;
+}) => {
+  return callProxy<{
+    sales: Array<{
+      id: string;
+      stage: string;
+      client: { firstName: string; lastName: string; };
+      createdAt: string;
+    }>;
+    pageMetaDto: PageMetaDto;
+  }>('get-sales', params);
+};
+
+// Get user's owned NFTs
+const getUserNfts = async () => {
+  return callProxy<{
+    nfts: Array<{
+      tokenId: number;
+      nftMetadata: { nftName: string; nftType: string; imageUrl: string; };
+      owner: { fullName: string; walletAddress: string; };
+    }>;
+  }>('get-user-nfts');
+};
+```
+
+### Phase 4: Enhance Comparison Dashboard
+
+**File**: `src/components/admin/ApiComparisonDashboard.tsx`
+
+1. Add **Sales** tab to compare sales data between environments
+2. Add **environment selector** to switch between:
+   - Production vs Official Staging
+   - Production vs Railway Dev
+
+3. Add **Client Summary** comparison showing:
+   - PENDING count comparison
+   - VERIFIED count comparison
+   - REJECTED count comparison
+
+### Phase 5: Add Sales Dashboard Component (New)
+
+**File**: `src/components/admin/SalesDashboard.tsx`
+
+Create a new component to display:
+- Sales pipeline by stage (LEADS → ONGOING → CLOSED)
+- Sales summary statistics
+- Client conversion funnel
+
 ---
 
-## Comparison Logic
+## Technical Details
 
-### Strains Matching
-Match by `id` or `sku`:
-- Compare: `name`, `thcContent`, `cbdContent`, `retailPrice`, `availability`
-- Flag: Price differences > 5%, missing strains
+### Medical Questionnaire Options (for reference)
+The documentation provides complete lists of valid values for:
+- Medical conditions (40+ options)
+- Prescribed medicines/treatments (70+ options)
+- Cannabis usage frequency
+- Cannabis usage methods
 
-### Clients Matching
-Match by `email`:
-- Compare: `firstName`, `lastName`, `isKYCVerified`, `adminApproval`
-- Flag: KYC status differences
+These should be validated client-side during client creation/onboarding.
 
-### Orders Matching
-Match by `id`:
-- Compare: `status`, `paymentStatus`, `totalAmount`
-- Flag: Status mismatches
-
----
-
-## Implementation Order
-
-1. Create `useApiComparison` hook with basic fetch logic
-2. Create `drgreen-comparison` edge function
-3. Build `ApiComparisonDashboard` component with Strains tab
-4. Add Clients and Orders tabs
-5. Implement difference detection and highlighting
-6. Add to AdminDashboard.tsx
-7. Test with real data from both environments
+### Status Values (for display/filtering)
+| Type | Values |
+|------|--------|
+| Admin Approval | `PENDING`, `VERIFIED`, `REJECTED` |
+| Order Status | `PENDING`, `DELIVERED`, `CANCELLED` |
+| Payment Status | `PENDING`, `PAID`, `FAILED` |
+| Sales Stage | `LEADS`, `ONGOING`, `CLOSED` |
 
 ---
 
-## Dependencies Used
-- Existing: `@radix-ui/react-tabs`, `lucide-react`, `framer-motion`
-- Existing: UI components (Card, Badge, Table, Tabs, ScrollArea)
-- Existing: `useDrGreenApi` pattern for API calls
+## Files to Modify
+
+| File | Action | Changes |
+|------|--------|---------|
+| `supabase/functions/drgreen-comparison/index.ts` | Update | Add official staging URL, support multiple staging environments |
+| `supabase/functions/drgreen-proxy/index.ts` | Update | Add 5 new action handlers for missing endpoints |
+| `src/hooks/useDrGreenApi.ts` | Update | Add new methods for sales, client summary, NFTs |
+| `src/components/admin/ApiComparisonDashboard.tsx` | Update | Add Sales tab, environment selector |
+| `src/components/admin/SalesDashboard.tsx` | Create | New sales pipeline component |
+| `src/pages/AdminDashboard.tsx` | Update | Integrate SalesDashboard |
+
+---
+
+## Testing After Implementation
+
+1. **Comparison Dashboard**: Verify side-by-side display of production vs staging data
+2. **Sales API**: Test `get-sales` and `get-sales-summary` endpoints
+3. **Client Summary**: Verify counts match between local DB and Dr. Green API
+4. **NFT List**: Verify user's owned NFTs are displayed correctly
+
+---
+
+## Dependencies
+- No new packages required
+- Reuses existing UI components (Tabs, Table, Card, Badge)
+- Reuses existing edge function patterns
