@@ -219,8 +219,9 @@ export function useDrGreenApi() {
   };
 
   // Verify or reject a client
-  const verifyDappClient = async (clientId: string, action: 'verify' | 'reject') => {
-    return callProxy<{ success: boolean; message: string }>('dapp-verify-client', { clientId, action });
+  const verifyDappClient = async (clientId: string, verifyAction: 'verify' | 'reject') => {
+    // Use 'verifyAction' property name to avoid overwriting the proxy 'action' field
+    return callProxy<{ success: boolean; message: string }>('dapp-verify-client', { clientId, verifyAction });
   };
 
   // Get all Dapp orders (paginated)
