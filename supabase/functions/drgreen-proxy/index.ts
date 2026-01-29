@@ -1869,8 +1869,8 @@ serve(async (req) => {
       }
       
       case "dapp-verify-client": {
-        const { clientId, action: verifyAction } = body || {};
-        if (!clientId || !verifyAction) throw new Error("clientId and action are required");
+        const { clientId, verifyAction } = body || {};
+        if (!clientId || !verifyAction) throw new Error("clientId and verifyAction are required");
         if (!validateClientId(clientId)) throw new Error("Invalid client ID format");
         response = await drGreenRequest(`/dapp/clients/${clientId}/${verifyAction}`, "PATCH");
         break;
