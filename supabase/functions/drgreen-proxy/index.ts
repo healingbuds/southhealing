@@ -1812,22 +1812,27 @@ serve(async (req) => {
       // ==========================================
       
       case "dashboard-summary": {
-        response = await drGreenRequest("/dapp/dashboard/summary", "GET");
+        // Use query string signing for GET endpoint (fixes 401)
+        response = await drGreenRequestQuery("/dapp/dashboard/summary", {});
         break;
       }
       
       case "dashboard-analytics": {
         const { startDate, endDate, filterBy, orderBy } = body || {};
-        let queryParams = `?orderBy=${orderBy || 'asc'}`;
-        if (startDate) queryParams += `&startDate=${startDate}`;
-        if (endDate) queryParams += `&endDate=${endDate}`;
-        if (filterBy) queryParams += `&filterBy=${filterBy}`;
-        response = await drGreenRequest(`/dapp/dashboard/analytics${queryParams}`, "GET");
+        const queryParams: Record<string, string | number> = {
+          orderBy: orderBy || 'asc',
+        };
+        if (startDate) queryParams.startDate = startDate;
+        if (endDate) queryParams.endDate = endDate;
+        if (filterBy) queryParams.filterBy = filterBy;
+        // Use query string signing for GET with params (fixes 401)
+        response = await drGreenRequestQuery("/dapp/dashboard/analytics", queryParams);
         break;
       }
       
       case "sales-summary": {
-        response = await drGreenRequest("/dapp/sales/summary", "GET");
+        // Use query string signing for GET endpoint (fixes 401)
+        response = await drGreenRequestQuery("/dapp/sales/summary", {});
         break;
       }
       
@@ -1838,13 +1843,20 @@ serve(async (req) => {
           throw new Error("Invalid pagination parameters");
         }
         
-        let queryParams = `?orderBy=${orderBy || 'desc'}&take=${take || 10}&page=${page || 1}`;
-        if (search) queryParams += `&search=${encodeURIComponent(String(search).slice(0, 100))}`;
-        if (searchBy) queryParams += `&searchBy=${searchBy}`;
-        if (status) queryParams += `&status=${status}`;
-        if (kyc) queryParams += `&kyc=${kyc}`;
-        if (adminApproval) queryParams += `&adminApproval=${adminApproval}`;
-        response = await drGreenRequest(`/dapp/clients${queryParams}`, "GET");
+        // Build query params object for proper signing
+        const queryParams: Record<string, string | number> = {
+          orderBy: orderBy || 'desc',
+          take: take || 10,
+          page: page || 1,
+        };
+        if (search) queryParams.search = String(search).slice(0, 100);
+        if (searchBy) queryParams.searchBy = searchBy;
+        if (status) queryParams.status = status;
+        if (kyc !== undefined) queryParams.kyc = String(kyc);
+        if (adminApproval) queryParams.adminApproval = adminApproval;
+        
+        // Use query string signing for GET with params (fixes 401)
+        response = await drGreenRequestQuery("/dapp/clients", queryParams);
         break;
       }
       
@@ -1871,12 +1883,19 @@ serve(async (req) => {
           throw new Error("Invalid pagination parameters");
         }
         
-        let queryParams = `?orderBy=${orderBy || 'desc'}&take=${take || 10}&page=${page || 1}`;
-        if (search) queryParams += `&search=${encodeURIComponent(String(search).slice(0, 100))}`;
-        if (searchBy) queryParams += `&searchBy=${searchBy}`;
-        if (adminApproval) queryParams += `&adminApproval=${adminApproval}`;
-        if (clientIds) queryParams += `&clientIds=${JSON.stringify(clientIds)}`;
-        response = await drGreenRequest(`/dapp/orders${queryParams}`, "GET");
+        // Build query params object for proper signing
+        const queryParams: Record<string, string | number> = {
+          orderBy: orderBy || 'desc',
+          take: take || 10,
+          page: page || 1,
+        };
+        if (search) queryParams.search = String(search).slice(0, 100);
+        if (searchBy) queryParams.searchBy = searchBy;
+        if (adminApproval) queryParams.adminApproval = adminApproval;
+        if (clientIds) queryParams.clientIds = JSON.stringify(clientIds);
+        
+        // Use query string signing for GET with params (fixes 401)
+        response = await drGreenRequestQuery("/dapp/orders", queryParams);
         break;
       }
       
@@ -1903,15 +1922,23 @@ serve(async (req) => {
           throw new Error("Invalid pagination parameters");
         }
         
-        let queryParams = `?orderBy=${orderBy || 'desc'}&take=${take || 10}&page=${page || 1}`;
-        if (search) queryParams += `&search=${encodeURIComponent(String(search).slice(0, 100))}`;
-        if (searchBy) queryParams += `&searchBy=${searchBy}`;
-        response = await drGreenRequest(`/dapp/carts${queryParams}`, "GET");
+        // Build query params object for proper signing
+        const queryParams: Record<string, string | number> = {
+          orderBy: orderBy || 'desc',
+          take: take || 10,
+          page: page || 1,
+        };
+        if (search) queryParams.search = String(search).slice(0, 100);
+        if (searchBy) queryParams.searchBy = searchBy;
+        
+        // Use query string signing for GET with params (fixes 401)
+        response = await drGreenRequestQuery("/dapp/carts", queryParams);
         break;
       }
       
       case "dapp-nfts": {
-        response = await drGreenRequest("/dapp/users/nfts", "GET");
+        // Use query string signing for GET endpoint (fixes 401)
+        response = await drGreenRequestQuery("/dapp/users/nfts", {});
         break;
       }
       
@@ -1922,20 +1949,31 @@ serve(async (req) => {
           throw new Error("Invalid country code");
         }
         
-        let queryParams = `?orderBy=${orderBy || 'desc'}`;
-        if (countryCode) queryParams += `&countryCode=${countryCode}`;
-        if (search) queryParams += `&search=${encodeURIComponent(String(search).slice(0, 100))}`;
-        if (searchBy) queryParams += `&searchBy=${searchBy}`;
-        response = await drGreenRequest(`/dapp/strains${queryParams}`, "GET");
+        // Build query params object for proper signing
+        const queryParams: Record<string, string | number> = {
+          orderBy: orderBy || 'desc',
+        };
+        if (countryCode) queryParams.countryCode = countryCode;
+        if (search) queryParams.search = String(search).slice(0, 100);
+        if (searchBy) queryParams.searchBy = searchBy;
+        
+        // Use query string signing for GET with params (fixes 401)
+        response = await drGreenRequestQuery("/dapp/strains", queryParams);
         break;
       }
       
       case "dapp-clients-list": {
         const { orderBy, status, kyc } = body || {};
-        let queryParams = `?orderBy=${orderBy || 'desc'}`;
-        if (status) queryParams += `&status=${status}`;
-        if (kyc) queryParams += `&kyc=${kyc}`;
-        response = await drGreenRequest(`/dapp/clients/list${queryParams}`, "GET");
+        
+        // Build query params object for proper signing
+        const queryParams: Record<string, string | number> = {
+          orderBy: orderBy || 'desc',
+        };
+        if (status) queryParams.status = status;
+        if (kyc !== undefined) queryParams.kyc = String(kyc);
+        
+        // Use query string signing for GET with params (fixes 401)
+        response = await drGreenRequestQuery("/dapp/clients/list", queryParams);
         break;
       }
       
