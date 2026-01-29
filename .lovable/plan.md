@@ -1,76 +1,90 @@
 
 
-# Plan: Update Dr. Green API Credentials and Verify Access
+# Plan: Fix Dr. Green API Signing for Admin Endpoints
 
-## Credentials Received
+## Problem Summary
 
-| Secret Name | Value (Base64-encoded) |
-|-------------|------------------------|
-| `DRGREEN_API_KEY` | `LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0K...` (Public Key) |
-| `DRGREEN_PRIVATE_KEY` | `LS0tLS1CRUdJTiBQUklWQVRFIEtFWS0tLS0t...` (Private Key) |
+Several admin endpoints are returning **401 Unauthorized** because they use the wrong signature method. The Dr. Green API expects GET requests with query parameters to sign the **query string**, not an empty body.
 
----
+## Current Behavior vs Expected
+
+| Endpoint | Current Method | Expected Method | Status |
+|----------|----------------|-----------------|--------|
+| `dapp-clients` | `drGreenRequest()` (body sign) | `drGreenRequestQuery()` (query sign) | 401 |
+| `dashboard-summary` | `drGreenRequest()` (body sign) | `drGreenRequestQuery()` (query sign) | 401 |
+| `get-sales` | `drGreenRequestQuery()` | Already correct | 200 |
+| `get-clients-summary` | `drGreenRequestBody()` (no params) | Already correct | 200 |
 
 ## Implementation Steps
 
-### Step 1: Update Secrets in Lovable Cloud
+### Step 1: Fix `dapp-clients` Action
 
-Update both secrets with the new credentials:
-- `DRGREEN_API_KEY` → ApiKey value provided
-- `DRGREEN_PRIVATE_KEY` → secretKey value provided
+Update line ~1847 to use query string signing:
 
-### Step 2: Redeploy Edge Function
-
-Redeploy `drgreen-proxy` to pick up the new credentials.
-
-### Step 3: Verify Protected Endpoints
-
-Test the following dApp endpoints that were previously returning 401:
-
-| Endpoint | Action | Expected Result |
-|----------|--------|-----------------|
-| `/dapp/clients` | `dapp-clients` | 200 OK with client list |
-| `/dapp/sales/summary` | `get-sales-summary` | 200 OK with sales data |
-| `/dapp/dashboard/summary` | `dashboard-summary` | 200 OK with dashboard metrics |
-
-### Step 4: Search for Kayleigh
-
-Once endpoints work, search for the missing client:
-```json
-{
-  "action": "dapp-clients",
-  "search": "kayliegh"
+```typescript
+case "dapp-clients": {
+  const { page, take, orderBy, search, searchBy, status, kyc, adminApproval } = body || {};
+  
+  if (!validatePagination(page, take)) {
+    throw new Error("Invalid pagination parameters");
+  }
+  
+  // Build query params object for proper signing
+  const queryParams: Record<string, string | number> = {
+    orderBy: orderBy || 'desc',
+    take: take || 10,
+    page: page || 1,
+  };
+  if (search) queryParams.search = String(search).slice(0, 100);
+  if (searchBy) queryParams.searchBy = searchBy;
+  if (status) queryParams.status = status;
+  if (kyc) queryParams.kyc = String(kyc);
+  if (adminApproval) queryParams.adminApproval = adminApproval;
+  
+  // Use query string signing for GET with params
+  response = await drGreenRequestQuery("/dapp/clients", queryParams);
+  break;
 }
 ```
 
-### Step 5: Import to Local Database
+### Step 2: Fix `dashboard-summary` Action
 
-If found in Dr. Green system, use the Admin Client Import tool to sync her record to the local `drgreen_clients` table.
+Update line ~1815 to use query string signing:
 
----
+```typescript
+case "dashboard-summary": {
+  // Use query signing with empty params for GET endpoint
+  response = await drGreenRequestQuery("/dapp/dashboard/summary", {});
+  break;
+}
+```
 
-## Success Criteria
+### Step 3: Fix Other Similar Endpoints
 
-- [x] All protected `/dapp/*` endpoints return 200 OK ✅ (get-sales-summary, get-clients-summary, get-sales working)
-- [x] Client list is retrievable from Dr. Green API ✅ (6 clients found)
-- [x] Kayleigh's record found ✅ (kayliegh.sm@gmail.com - ID: 47542db8-3982-4204-bd32-2f36617c5d3d)
-- [ ] Admin Dashboard displays real data instead of permission errors
+Review and fix these actions if they have the same issue:
+- `sales-summary` (line ~1830)
+- `dapp-orders` (line ~1867)
+- `dapp-carts` (line ~1899)
+- `dapp-nfts` (line ~1918)
+- `dapp-strains` (line ~1935)
 
-## Kayleigh's Record (Found)
-| Field | Value |
-|-------|-------|
-| Dr Green ID | `47542db8-3982-4204-bd32-2f36617c5d3d` |
-| Email | `kayliegh.sm@gmail.com` |
-| Name | Kayliegh Moutinho |
-| Phone | +351 963501027 |
-| Country | PT (Portugal) |
-| Stage | LEADS |
-| Created | 2026-01-29T15:22:47.273Z |
+### Step 4: Redeploy and Test
 
-## Next Step: Link to Local Database
-Kayleigh's record exists in Dr. Green but cannot be imported without a linked Supabase user_id (foreign key constraint). 
+1. Deploy the updated `drgreen-proxy` edge function
+2. Test `dapp-clients` → Should return 200 with client list
+3. Test `dashboard-summary` → Should return 200 with metrics
+4. Verify Admin Dashboard displays live data
 
-**Options:**
-1. Kayleigh signs up on Healing Buds → her record auto-links during client registration
-2. Admin manually associates her when she logs in for the first time
+## Expected Outcome
+
+After this fix:
+- All 6 clients will be visible via the Admin Dashboard
+- Dashboard "Live" stats will populate correctly
+- Client management features will work as expected
+
+## Files to Modify
+
+| File | Changes |
+|------|---------|
+| `supabase/functions/drgreen-proxy/index.ts` | Update ~6-8 action cases to use `drGreenRequestQuery()` |
 
