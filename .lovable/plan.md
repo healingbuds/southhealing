@@ -1,146 +1,165 @@
 
-Goal
-- Make the Dr. Green integration predictable and “single source of truth”:
-  - At sign-in / sign-up: automatically link the logged-in user to their Dr. Green client (by the user’s authenticated email) and pull live KYC + adminApproval into the local mapping table.
-  - Registration flow: do not create duplicates; if a client already exists in Dr. Green, link instead of re-registering.
-  - Remove the outdated “Test Accounts (Demo Access)” dropdown from Auth (keep only Admin demo if desired).
+# Fix: Live Dr. Green API Integration for Verified Status Display
 
-What’s currently going wrong (from code review)
-1) Auth page still renders a hardcoded “Test Accounts (Demo Access)” dropdown
-- src/pages/Auth.tsx contains buttons that auto-fill emails like new@healingbuds.test, pending@..., etc.
-- Those accounts are now removed, but the UI still advertises them, which is misleading and breaks trust.
+## Problem Summary
+The dashboard shows "Account Pending Approval" for Scott even though you say he's approved in Dr. Green. The investigation reveals:
 
-2) Live verification does not “self-heal” for real existing Dr. Green clients
-- ShopContext fetches eligibility ONLY from the local drgreen_clients row for the logged-in user (drgreen_clients where user_id = auth.uid()).
-- If that row doesn’t exist yet (common for “real users that already exist in Dr. Green”), the app has no way to discover the correct drgreen_client_id and therefore cannot sync status.
-- Current syncVerificationFromDrGreen() requires drGreenClient.drgreen_client_id; if drGreenClient is null, sync cannot run.
+1. **API lookup is working** - The proxy successfully queries Dr. Green and finds 6 clients
+2. **Email mismatch** - Scott's email `scott.k1@outlook.com` does NOT match any of those 6 clients in the Dr. Green system
+3. **Data not flowing back** - Even if a match was found, the status update and user feedback aren't clear enough
+4. **Kayliegh completed registration** - She went through the full onboarding and should be properly linked
 
-3) ClientOnboarding can create “local-*” placeholder client IDs
-- ClientOnboarding sets clientId = `local-${Date.now()}` by default and only replaces it if the API call succeeds.
-- If the API call fails, it still upserts drgreen_clients with a local-* id, then eligibility sync is explicitly skipped later (ShopContext checks local-* prefix and refuses to sync).
-- That makes the process feel “messy/ambiguous”: a user “registered” but the system can never reconcile them automatically.
+## Root Causes
+1. **Scott has no Dr. Green profile under `scott.k1@outlook.com`** - He may be registered under a different email in Dr. Green, or never completed registration through the proper flow
+2. **API response logging insufficient** - We don't see what emails exist in the 6 clients returned, making debugging hard
+3. **No clear user feedback** - When auto-discovery fails, the user isn't told why or given clear next steps
+4. **Local drgreen_clients table is empty** - The query returned no rows, confirming neither Scott nor Kayliegh have local mappings yet
 
-Non-negotiable compliance requirements satisfied by the fix
-- Browser must never call Dr. Green directly. We will only call via the backend proxy (drgreen-proxy).
-- Server-side signing only (already true).
-- Eligibility enforcement remains: only isKYCVerified === true AND adminApproval === "VERIFIED" unlocks cart/checkout.
+## Implementation Plan
 
-Implementation design (high level)
-A) Add a safe “self-lookup” action to drgreen-proxy
-- New proxy action: “get-client-by-auth-email” (name can vary, but concept is: no arbitrary email input).
-- It MUST:
-  - Require a logged-in user (Authorization Bearer token present).
-  - Ignore any provided email in the request body.
-  - Use the authenticated user’s email from the token to query Dr. Green:
-    - GET /dapp/clients?search=<user.email>&searchBy=email&take=1&orderBy=desc
-  - Return only what the app needs to link:
-    - clientId, isKYCVerified, adminApproval, kycLink, email
-- This avoids privacy leaks (users can’t probe other emails).
+### A) Enhanced API Debugging (Edge Function)
+Add detailed logging to show what emails exist in the Dr. Green response (masked for privacy).
 
-Files to change:
-- supabase/functions/drgreen-proxy/index.ts
-  - Add new action handler in the switch(action) section.
-  - Add the action name to the appropriate allowlist:
-    - Probably AUTH_ONLY_ACTIONS (auth required, no admin role).
-  - Use query signing (drGreenRequestQuery) consistent with /dapp/clients list endpoints.
+**File**: `supabase/functions/drgreen-proxy/index.ts`
+- Log the first 3 characters of each client email found (e.g., "sco***", "kay***")
+- Log total clients in response and any with email fields present
+- This helps diagnose whether the API is returning the right clients
 
-B) Automatically link + refresh Dr. Green status on login (and on app boot)
-- Update ShopContext so that after login:
-  - If drgreen_clients row exists: current behavior continues (fetchClient + optional syncVerificationFromDrGreen).
-  - If drgreen_clients row does NOT exist:
-    1) Call drgreen-proxy action get-client-by-auth-email
-    2) If a Dr. Green client is found:
-       - Upsert drgreen_clients with:
-         - user_id = auth user id
-         - drgreen_client_id = returned clientId
-         - is_kyc_verified, admin_approval, kyc_link
-         - email (optional field in table) for observability
-       - Then fetchClient() again to populate state
-    3) If no client found:
-       - keep drGreenClient null → user is correctly treated as unregistered and routed to /shop/register
-- Result: Scott and Kayliegh will log in and immediately become “Verified” in the UI because we will pull their approved status from Dr. Green.
+### B) Better Error Handling & User Messaging (ShopContext)
+When auto-discovery fails, provide clear feedback to the user.
 
-Files to change:
-- src/context/ShopContext.tsx
-  - Add a new internal function: linkClientFromDrGreenByAuthEmail()
-  - Call it inside the auth state change effect (after fetchClient detects null), and/or inside fetchClient when no local record exists.
-  - Keep all eligibility logic unchanged (still based on the local mapping row that was populated from Dr. Green).
+**File**: `src/context/ShopContext.tsx`
+- Add toast notifications when auto-discovery runs
+- Show "No existing profile found - please complete registration" when lookup returns no match
+- Show "Profile linked successfully!" when a match is found
 
-C) Make ClientOnboarding deterministic (no “local-*” dead-end)
-We’ll implement a clean, explicit decision tree:
+### C) Immediate Status Sync on Dashboard Load
+Force a fresh check from Dr. Green when viewing status page.
 
-1) On “submit registration”:
-   - First, call get-client-by-auth-email.
-   - If Dr. Green already has a client for this email:
-     - Do NOT call create-client-legacy.
-     - Just upsert drgreen_clients using the existing clientId and status and continue to “Next steps / KYC link” UI.
-2) If no Dr. Green client exists:
-   - Call create-client-legacy with the payload.
-   - If success:
-     - Upsert drgreen_clients with returned clientId and kycLink.
-   - If failure:
-     - Do NOT store local-* drgreen_client_id.
-     - Show a clear blocking error and a “Retry” button (and optionally “Contact support”).
-     - Rationale: local-* prevents syncing forever and causes ambiguity.
+**File**: `src/pages/DashboardStatus.tsx`
+- Call `linkClientFromDrGreenByAuthEmail` directly if no local client exists (currently only done via ShopContext)
+- Show a clear message: "Checking Dr. Green records..." during lookup
+- Display the API result to the user
 
-Files to change:
-- src/components/shop/ClientOnboarding.tsx
-  - Replace the “local-*” fallback path with:
-    - “hard fail + retry” (preferred for compliance-critical onboarding)
-  - Add pre-check for existing Dr. Green client by auth email before creating a new one.
+### D) Pagination Support for Large Client Lists
+If there are more than 100 clients in Dr. Green, the current lookup may miss users on later pages.
 
-D) Remove the test accounts dropdown from Auth.tsx (and prevent regressions)
-- Remove the entire <details> block currently labeled “Test Accounts (Demo Access)”.
-- Optional: keep ONLY an Admin autofill button, but behind a strict guard (so it cannot accidentally ship or confuse operators), e.g.:
-  - Only show if hostname includes lovable.app OR a query flag ?demo=1
-  - And only include admin@healingbuds.test.
-- Given your instruction “only test account is admin”: we’ll keep at most that single admin autofill, or remove all autofills completely (recommended for production trust).
+**File**: `supabase/functions/drgreen-proxy/index.ts`
+- Implement pagination: fetch up to 3 pages (300 clients) before giving up
+- Log which page the match was found on for debugging
 
-Files to change:
-- src/pages/Auth.tsx
+### E) Admin Dashboard: Manual Email Lookup
+Allow admins to look up a client by email to verify they exist in Dr. Green.
 
-E) Verification refresh behavior (make it feel seamless)
-- Keep the existing “Refresh Status” button.
-- Add one automatic refresh trigger:
-  - On dashboard/status mount, call syncVerificationFromDrGreen once immediately (not just every 30s when not verified).
-  - This reduces “why isn’t it updated?” moments.
+**File**: `src/components/admin/AdminClientManager.tsx`
+- Add a "Lookup by Email" action that queries the API
+- Show the full client record if found (for admin debugging)
 
-Files to change:
-- src/pages/DashboardStatus.tsx
+## Technical Details
 
-Testing plan (must pass before considering this fixed)
-1) Real verified user (Scott)
-- Log in as scott.k1@outlook.com
-- Expected:
-  - ShopContext sees no local drgreen_clients row → calls get-client-by-auth-email → upserts mapping → drGreenClient populated
-  - isEligible becomes true (KYC verified + adminApproval VERIFIED)
-  - Redirect to /dashboard then /shop (as your redirect logic dictates)
+### Edge Function Changes (`drgreen-proxy/index.ts`)
 
-2) Real verified user (Kayliegh)
-- Same as above.
+```typescript
+// Enhanced logging for client lookup
+const emailPrefixes = clients.map((c: any) => 
+  c.email ? c.email.slice(0, 3) + '***' : 'no-email'
+);
+logInfo("Client emails in response", { 
+  clientCount: clients.length, 
+  emailPrefixes: emailPrefixes.slice(0, 10) // Show first 10
+});
 
-3) Brand new user (no Dr. Green client yet)
-- Sign up → confirm email → sign in → attempt /shop
-- Expected:
-  - No Dr. Green client found → must complete /shop/register
-  - Onboarding submission:
-    - If Dr. Green API succeeds: client created, KYC link stored and shown
-    - If API fails: clear blocking error + retry, no local-* dead record created
+// Multi-page lookup
+for (let page = 1; page <= 3; page++) {
+  const queryParams = { take: 100, page, orderBy: 'desc' };
+  const response = await drGreenRequestQuery("/dapp/clients", queryParams);
+  // ... check for match in this page
+  if (matchingClient) break;
+  if (clients.length < 100) break; // No more pages
+}
+```
 
-4) Ineligible / pending user
-- Ensure cart and checkout remain blocked unless (is_kyc_verified === true AND admin_approval === "VERIFIED")
+### ShopContext Changes (`src/context/ShopContext.tsx`)
 
-5) Security validation
-- Confirm the new proxy action cannot be used to look up arbitrary emails:
-  - Request body email is ignored; server always uses token user.email.
+```typescript
+// Add user-facing feedback
+const linkClientFromDrGreenByAuthEmail = useCallback(async (userId: string): Promise<boolean> => {
+  try {
+    toast({ title: 'Checking records...', description: 'Looking up your profile' });
+    
+    const { data, error } = await supabase.functions.invoke('drgreen-proxy', {
+      body: { action: 'get-client-by-auth-email' },
+    });
+    
+    if (data?.found && data?.clientId) {
+      toast({ 
+        title: 'Profile Found!', 
+        description: `Status: ${data.adminApproval}`,
+        variant: data.adminApproval === 'VERIFIED' ? 'default' : 'default'
+      });
+      // ... upsert logic
+      return true;
+    } else {
+      toast({ 
+        title: 'No Profile Found', 
+        description: 'Please complete registration to access the shop',
+        variant: 'default'
+      });
+      return false;
+    }
+  } catch (err) {
+    toast({ title: 'Lookup Failed', description: 'Please try again', variant: 'destructive' });
+    return false;
+  }
+}, [toast]);
+```
 
-Rollout notes
-- No database schema changes are required.
-- This keeps Dr. Green as the single source of truth for verification; local drgreen_clients remains a mapping/cache for UI gating, updated from Dr. Green.
+### Dashboard Status Changes (`src/pages/DashboardStatus.tsx`)
 
-User decisions needed (small, but important)
-- For Auth.tsx demo UI:
-  1) Remove all autofill UI completely (recommended), OR
-  2) Keep only “Admin demo autofill” but only in preview/dev.
+```typescript
+// Add direct lookup button and status display
+const [lookupResult, setLookupResult] = useState<string | null>(null);
 
-I will implement with option (1) by default unless you explicitly want (2).
+const handleManualLookup = async () => {
+  setLookupResult('Checking Dr. Green records...');
+  const { data } = await supabase.functions.invoke('drgreen-proxy', {
+    body: { action: 'get-client-by-auth-email' },
+  });
+  
+  if (data?.found) {
+    setLookupResult(`Found! Status: ${data.adminApproval}, KYC: ${data.isKYCVerified ? 'Yes' : 'No'}`);
+  } else {
+    setLookupResult('No profile found under your email address.');
+  }
+};
+```
+
+## User Experience After Fix
+
+1. **Scott logs in** → Auto-discovery runs → Toast: "No Profile Found - please complete registration"
+2. **Scott goes to /shop/register** → Completes onboarding → Dr. Green client created → Returns with KYC link
+3. **After KYC complete** → Scott refreshes → Auto-discovery finds his new profile → Status updates to verified
+4. **Kayliegh logs in** → Auto-discovery runs → Toast: "Profile Found! Status: VERIFIED" → Redirected to shop
+
+## What If Scott Already Has a Dr. Green Profile?
+
+If Scott registered in the Dr. Green DApp portal directly (not through Healing Buds), he needs to:
+1. Confirm what email he used in Dr. Green
+2. Either:
+   - Update his Dr. Green profile email to match `scott.k1@outlook.com`, OR
+   - Sign up for Healing Buds with the email that matches his Dr. Green profile
+
+## Files to Modify
+
+1. `supabase/functions/drgreen-proxy/index.ts` - Enhanced logging + pagination
+2. `src/context/ShopContext.tsx` - Toast notifications for auto-discovery
+3. `src/pages/DashboardStatus.tsx` - Manual lookup button + clear status display
+4. `src/components/admin/AdminClientManager.tsx` - Admin email lookup tool
+
+## Testing Plan
+
+1. Log in as `scott.k1@outlook.com` → Should see toast "No Profile Found"
+2. View `/dashboard/status` → Should see clear message and option to register
+3. Complete registration → Dr. Green client created → Return to status page
+4. Refresh status → Should now show verified (if approved in Dr. Green)
+5. Log in as Kayliegh → Should auto-discover and show verified status
