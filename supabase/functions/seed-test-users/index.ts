@@ -6,66 +6,32 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Real user accounts - these will sync with Dr. Green API on login
+// NOTE: createClient: false means NO mock drgreen_clients record is created
+// The app will fetch their real client data from Dr. Green API via email lookup
 const TEST_USERS = [
-  {
-    email: "new@healingbuds.test",
-    password: "NewUser123!",
-    fullName: "New User (No Registration)",
-    createClient: false, // No drgreen_clients record - brand new user
-    isKycVerified: false,
-    adminApproval: "PENDING",
-    kycLink: null,
-    role: null,
-  },
-  {
-    email: "pending@healingbuds.test",
-    password: "Pending123!",
-    fullName: "Pending User (KYC Pending)",
-    createClient: true,
-    isKycVerified: false,
-    adminApproval: "PENDING",
-    kycLink: "https://example.com/kyc/test-link", // Mock KYC link
-    role: null,
-  },
-  {
-    email: "kycdone@healingbuds.test",
-    password: "KycDone123!",
-    fullName: "KYC Done (Awaiting Review)",
-    createClient: true,
-    isKycVerified: true,
-    adminApproval: "PENDING", // KYC done but admin hasn't approved yet
-    kycLink: null,
-    role: null,
-  },
-  {
-    email: "patient@healingbuds.test",
-    password: "Patient123!",
-    fullName: "Test Patient (Fully Verified)",
-    createClient: true,
-    isKycVerified: true,
-    adminApproval: "VERIFIED",
-    kycLink: null,
-    role: null,
-  },
-  {
-    email: "rejected@healingbuds.test",
-    password: "Rejected123!",
-    fullName: "Rejected User (Blocked)",
-    createClient: true,
-    isKycVerified: true,
-    adminApproval: "REJECTED",
-    kycLink: null,
-    role: null,
-  },
   {
     email: "admin@healingbuds.test",
     password: "Admin123!",
     fullName: "Admin User",
-    createClient: true,
-    isKycVerified: true,
-    adminApproval: "VERIFIED",
-    kycLink: null,
+    createClient: false, // Admin doesn't need drgreen client record
     role: "admin",
+  },
+  // Real user accounts - provide actual Dr. Green registered emails
+  // These users exist in Dr. Green API and will sync on login
+  {
+    email: "scott.norris@norrisent.co.uk", // Scott's Dr. Green registered email
+    password: "TempPassword123!",
+    fullName: "Scott Norris",
+    createClient: false, // Will sync from Dr. Green API
+    role: null,
+  },
+  {
+    email: "kayliegh.norris@norrisent.co.uk", // Kayliegh's Dr. Green registered email
+    password: "TempPassword123!",
+    fullName: "Kayliegh Norris",
+    createClient: false, // Will sync from Dr. Green API
+    role: null,
   },
 ];
 
@@ -132,31 +98,20 @@ serve(async (req) => {
           console.error(`Profile error for ${testUser.email}:`, profileError);
         }
 
-        // Upsert drgreen_client (only if createClient is true)
-        if (testUser.createClient) {
-          const { error: clientError } = await supabaseAdmin
-            .from("drgreen_clients")
-            .upsert(
-              {
-                user_id: userId,
-                drgreen_client_id: `test-${userId.slice(0, 8)}`,
-                is_kyc_verified: testUser.isKycVerified,
-                admin_approval: testUser.adminApproval,
-                kyc_link: testUser.kycLink,
-                country_code: "PT",
-              },
-              { onConflict: "user_id" }
-            );
-          if (clientError) {
-            console.error(`Client error for ${testUser.email}:`, clientError);
-          }
-        } else {
-          // Delete any existing client record for "new user" test
-          await supabaseAdmin
+        // For users with createClient: false, ensure NO mock drgreen_clients record exists
+        // This forces the app to sync from the real Dr. Green API on login
+        if (!testUser.createClient) {
+          // Delete any existing mock client record
+          const { error: deleteError } = await supabaseAdmin
             .from("drgreen_clients")
             .delete()
             .eq("user_id", userId);
-          console.log(`Deleted client record for new user: ${testUser.email}`);
+          
+          if (deleteError) {
+            console.error(`Failed to delete client record for ${testUser.email}:`, deleteError);
+          } else {
+            console.log(`Ensured no mock client record for: ${testUser.email}`);
+          }
         }
 
         // Assign role if needed
@@ -181,7 +136,11 @@ serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ success: true, results }),
+      JSON.stringify({ 
+        success: true, 
+        results,
+        note: "Users with createClient: false will sync their client data from Dr. Green API on first login"
+      }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
