@@ -218,10 +218,27 @@ export function useDrGreenApi() {
     }>('dapp-client-details', { clientId });
   };
 
-  // Verify or reject a client
+  // DEPRECATED: Verify or reject a client
+  // NOTE: The Dr. Green API does NOT support external approval/rejection.
+  // Client approval can ONLY be done within the Dr. Green DApp admin portal.
+  // This function is kept for backwards compatibility but will return an error.
   const verifyDappClient = async (clientId: string, verifyAction: 'verify' | 'reject') => {
-    // Use 'verifyAction' property name to avoid overwriting the proxy 'action' field
+    console.warn('[DEPRECATED] verifyDappClient: Client approval must be done in Dr. Green DApp admin portal');
     return callProxy<{ success: boolean; message: string }>('dapp-verify-client', { clientId, verifyAction });
+  };
+
+  // Sync client status from Dr. Green API
+  // Use this to refresh adminApproval status after external approval in Dr. Green DApp
+  const syncClientStatus = async (clientId: string) => {
+    return callProxy<{
+      id: string;
+      email: string;
+      firstName: string;
+      lastName: string;
+      isKYCVerified: boolean;
+      adminApproval: string;
+      createdAt: string;
+    }>('sync-client-status', { clientId });
   };
 
   // Get all Dapp orders (paginated)
@@ -475,7 +492,8 @@ export function useDrGreenApi() {
     getSalesSummary,
     getDappClients,
     getDappClientDetails,
-    verifyDappClient,
+    verifyDappClient, // DEPRECATED - kept for backwards compatibility
+    syncClientStatus, // NEW - use this to refresh client status from Dr. Green API
     getDappOrders,
     getDappOrderDetails,
     updateDappOrder,

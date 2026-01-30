@@ -15,24 +15,22 @@ import {
   User,
   Mail,
   Globe,
+  ExternalLink,
+  Info,
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import { useDrGreenApi } from "@/hooks/useDrGreenApi";
 import { cn } from "@/lib/utils";
@@ -56,9 +54,12 @@ interface ClientsSummary {
 
 type FilterStatus = "all" | "PENDING" | "VERIFIED" | "REJECTED";
 
+// Dr. Green DApp admin portal URL
+const DRGREEN_ADMIN_URL = "https://dapp.drgreennft.com";
+
 export function AdminClientManager() {
   const { toast } = useToast();
-  const { getDappClients, getClientsSummary, verifyDappClient } = useDrGreenApi();
+  const { getDappClients, getClientsSummary, syncClientStatus } = useDrGreenApi();
   
   const [clients, setClients] = useState<DrGreenClient[]>([]);
   const [summary, setSummary] = useState<ClientsSummary | null>(null);
@@ -66,14 +67,9 @@ export function AdminClientManager() {
   const [refreshing, setRefreshing] = useState(false);
   const [isRefetching, setIsRefetching] = useState(false);
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [syncingClientId, setSyncingClientId] = useState<string | null>(null);
   const [filter, setFilter] = useState<FilterStatus>("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [confirmDialog, setConfirmDialog] = useState<{
-    open: boolean;
-    action: 'approve' | 'reject' | null;
-    client: DrGreenClient | null;
-  }>({ open: false, action: null, client: null });
 
   // Use refs to access current filter/search values without triggering re-creation
   const filterRef = useRef(filter);
@@ -167,51 +163,54 @@ export function AdminClientManager() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filter, searchQuery]);
 
-  const handleApprove = async (clientId: string, clientName: string) => {
-    setActionLoading(clientId);
+  // Sync client status from Dr. Green API
+  const handleSyncStatus = async (clientId: string, clientName: string) => {
+    setSyncingClientId(clientId);
     try {
-      const { error } = await verifyDappClient(clientId, "verify");
-      if (error) {
+      const result = await syncClientStatus(clientId);
+      
+      if (result.error) {
         toast({
-          title: "Approval Failed",
-          description: error,
+          title: "Sync Failed",
+          description: result.error,
           variant: "destructive",
         });
       } else {
-        toast({
-          title: "Client Approved",
-          description: `${clientName} has been verified successfully.`,
-        });
-        await fetchData();
+        // Check if the response contains updated data
+        const responseData = result.data as unknown as { data?: DrGreenClient };
+        const updatedClient = responseData?.data || result.data;
+        
+        if (updatedClient) {
+          // Update the client in our local state
+          setClients(prev => prev.map(c => 
+            c.id === clientId 
+              ? { ...c, adminApproval: (updatedClient as DrGreenClient).adminApproval, isKYCVerified: (updatedClient as DrGreenClient).isKYCVerified }
+              : c
+          ));
+          
+          toast({
+            title: "Status Synced",
+            description: `${clientName}'s status has been refreshed from Dr. Green.`,
+          });
+        }
+        
+        // Refresh summary counts
+        const summaryResult = await getClientsSummary();
+        const summaryData = summaryResult.data as unknown as { data?: { summary?: ClientsSummary } };
+        const summaryObj = summaryData?.data?.summary || (summaryResult.data as { summary?: ClientsSummary })?.summary;
+        if (summaryObj) {
+          setSummary(summaryObj);
+        }
       }
     } catch (err) {
-      console.error("Approve error:", err);
+      console.error("Sync error:", err);
+      toast({
+        title: "Sync Error",
+        description: "Failed to sync client status.",
+        variant: "destructive",
+      });
     } finally {
-      setActionLoading(null);
-    }
-  };
-
-  const handleReject = async (clientId: string, clientName: string) => {
-    setActionLoading(clientId);
-    try {
-      const { error } = await verifyDappClient(clientId, "reject");
-      if (error) {
-        toast({
-          title: "Rejection Failed",
-          description: error,
-          variant: "destructive",
-        });
-      } else {
-        toast({
-          title: "Client Rejected",
-          description: `${clientName} has been rejected.`,
-        });
-        await fetchData();
-      }
-    } catch (err) {
-      console.error("Reject error:", err);
-    } finally {
-      setActionLoading(null);
+      setSyncingClientId(null);
     }
   };
 
@@ -223,27 +222,9 @@ export function AdminClientManager() {
     });
   };
 
-  const openConfirmDialog = (client: DrGreenClient, action: 'approve' | 'reject') => {
-    setConfirmDialog({ open: true, action, client });
-  };
-
-  const closeConfirmDialog = () => {
-    setConfirmDialog({ open: false, action: null, client: null });
-  };
-
-  const executeConfirmedAction = async () => {
-    if (!confirmDialog.client || !confirmDialog.action) return;
-    
-    const { client, action } = confirmDialog;
-    const clientName = `${client.firstName} ${client.lastName}`;
-    
-    closeConfirmDialog();
-    
-    if (action === 'approve') {
-      await handleApprove(client.id, clientName);
-    } else {
-      await handleReject(client.id, clientName);
-    }
+  // Open Dr. Green DApp admin portal
+  const openDrGreenAdmin = () => {
+    window.open(DRGREEN_ADMIN_URL, '_blank', 'noopener,noreferrer');
   };
 
   const getStatusBadge = (client: DrGreenClient) => {
@@ -460,42 +441,50 @@ export function AdminClientManager() {
                           </div>
                         </div>
 
-                        {/* Action Buttons */}
+                        {/* Action Buttons - Replaced with Sync Status */}
                         <div className="flex items-center gap-2">
                           {client.adminApproval === "PENDING" && (
-                            <>
-                              <Button
-                                size="sm"
-                                onClick={() => openConfirmDialog(client, 'approve')}
-                                disabled={actionLoading === client.id}
-                                className="bg-green-600 hover:bg-green-700 text-white"
-                              >
-                                {actionLoading === client.id ? (
-                                  <Loader2 className="w-4 h-4 animate-spin" />
-                                ) : (
-                                  <>
-                                    <CheckCircle className="w-4 h-4 mr-1" />
-                                    Approve
-                                  </>
-                                )}
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => openConfirmDialog(client, 'reject')}
-                                disabled={actionLoading === client.id}
-                                className="border-red-500/30 text-red-600 hover:bg-red-500/10"
-                              >
-                                {actionLoading === client.id ? (
-                                  <Loader2 className="w-4 h-4 animate-spin" />
-                                ) : (
-                                  <>
-                                    <XCircle className="w-4 h-4 mr-1" />
-                                    Reject
-                                  </>
-                                )}
-                              </Button>
-                            </>
+                            <TooltipProvider>
+                              <div className="flex items-center gap-2">
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Badge className="bg-amber-500/10 text-amber-600 dark:text-amber-400 px-3 py-1 cursor-help">
+                                      <Clock className="w-4 h-4 mr-1" />
+                                      Pending Dr. Green Review
+                                      <Info className="w-3 h-3 ml-1 opacity-60" />
+                                    </Badge>
+                                  </TooltipTrigger>
+                                  <TooltipContent className="max-w-xs">
+                                    <p>Client approval must be done in the Dr. Green DApp admin portal.</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleSyncStatus(client.id, `${client.firstName} ${client.lastName}`)}
+                                  disabled={syncingClientId === client.id}
+                                  className="border-primary/30"
+                                >
+                                  {syncingClientId === client.id ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                  ) : (
+                                    <>
+                                      <RefreshCw className="w-4 h-4 mr-1" />
+                                      Sync
+                                    </>
+                                  )}
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="secondary"
+                                  onClick={openDrGreenAdmin}
+                                  className="gap-1"
+                                >
+                                  <ExternalLink className="w-3 h-3" />
+                                  Dr. Green
+                                </Button>
+                              </div>
+                            </TooltipProvider>
                           )}
                           {client.adminApproval === "VERIFIED" && (
                             <Badge className="bg-green-500/10 text-green-600 dark:text-green-400 px-3 py-1">
@@ -504,21 +493,29 @@ export function AdminClientManager() {
                             </Badge>
                           )}
                           {client.adminApproval === "REJECTED" && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => openConfirmDialog(client, 'approve')}
-                              disabled={actionLoading === client.id}
-                            >
-                              {actionLoading === client.id ? (
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                              ) : (
-                                <>
-                                  <RefreshCw className="w-4 h-4 mr-1" />
-                                  Re-approve
-                                </>
-                              )}
-                            </Button>
+                            <TooltipProvider>
+                              <div className="flex items-center gap-2">
+                                <Badge className="bg-red-500/10 text-red-600 dark:text-red-400 px-3 py-1">
+                                  <XCircle className="w-4 h-4 mr-1" />
+                                  Rejected
+                                </Badge>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleSyncStatus(client.id, `${client.firstName} ${client.lastName}`)}
+                                  disabled={syncingClientId === client.id}
+                                >
+                                  {syncingClientId === client.id ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                  ) : (
+                                    <>
+                                      <RefreshCw className="w-4 h-4 mr-1" />
+                                      Sync
+                                    </>
+                                  )}
+                                </Button>
+                              </div>
+                            </TooltipProvider>
                           )}
                         </div>
                       </div>
@@ -530,52 +527,6 @@ export function AdminClientManager() {
           </ScrollArea>
           </div>
         )}
-
-        {/* Confirmation Dialog */}
-        <AlertDialog open={confirmDialog.open} onOpenChange={(open) => !open && closeConfirmDialog()}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle className="flex items-center gap-2">
-                {confirmDialog.action === 'approve' ? (
-                  <>
-                    <ShieldCheck className="w-5 h-5 text-green-600" />
-                    Approve Client?
-                  </>
-                ) : (
-                  <>
-                    <ShieldAlert className="w-5 h-5 text-red-600" />
-                    Reject Client?
-                  </>
-                )}
-              </AlertDialogTitle>
-              <AlertDialogDescription className="space-y-2">
-                <p>
-                  Are you sure you want to {confirmDialog.action}{" "}
-                  <strong>{confirmDialog.client?.firstName} {confirmDialog.client?.lastName}</strong>{" "}
-                  ({confirmDialog.client?.email})?
-                </p>
-                <p className="text-muted-foreground">
-                  {confirmDialog.action === 'approve' 
-                    ? "This will grant them access to purchase medical cannabis products through the platform."
-                    : "This will prevent them from purchasing products until they are re-approved."}
-                </p>
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={executeConfirmedAction}
-                className={
-                  confirmDialog.action === 'approve'
-                    ? "bg-green-600 hover:bg-green-700 text-white"
-                    : "bg-red-600 hover:bg-red-700 text-white"
-                }
-              >
-                {confirmDialog.action === 'approve' ? "Yes, Approve Client" : "Yes, Reject Client"}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
       </CardContent>
     </Card>
   );

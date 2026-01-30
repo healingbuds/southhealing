@@ -1869,19 +1869,25 @@ serve(async (req) => {
       }
       
       case "dapp-verify-client": {
-        const { clientId, verifyAction } = body || {};
-        if (!clientId || !verifyAction) throw new Error("clientId and verifyAction are required");
+        // DEPRECATED: The Dr. Green API does NOT support external approval/rejection.
+        // The only documented PATCH endpoints are /activate and /deactivate (for isActive status).
+        // Client adminApproval can ONLY be changed within the Dr. Green DApp admin panel.
+        // Webhooks (client.approved, client.rejected) notify us when status changes.
+        throw new Error(
+          "Client approval/rejection is not supported via API. " +
+          "Please approve clients directly in the Dr. Green DApp admin portal. " +
+          "Use the 'Sync Status' feature to refresh local data."
+        );
+      }
+      
+      // Sync client status - fetches live data from Dr. Green API
+      case "sync-client-status": {
+        const { clientId } = body || {};
+        if (!clientId) throw new Error("clientId is required");
         if (!validateClientId(clientId)) throw new Error("Invalid client ID format");
-
-        // NOTE: We have confirmed /approve and /reject sub-resource endpoints return 404.
-        // Use the only known valid update endpoint and pass a status value.
-        // The Dr. Green API is the source of truth for adminApproval eligibility.
-        const status = verifyAction === 'verify' ? 'VERIFIED' : 'REJECTED';
-
-        // PATCH /dapp/clients/{clientId}
-        // The API has previously returned 200 for PATCH with other fields (even if ignored),
-        // so we attempt a status update here.
-        response = await drGreenRequest(`/dapp/clients/${clientId}`, "PATCH", { status });
+        
+        // GET /dapp/clients/{clientId} returns current adminApproval status
+        response = await drGreenRequest(`/dapp/clients/${clientId}`, "GET");
         break;
       }
       
