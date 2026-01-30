@@ -371,6 +371,23 @@ export function AdminClientManager() {
           <Button variant="secondary" onClick={() => fetchData()}>
             Search
           </Button>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  onClick={openDrGreenAdmin}
+                  className="border-primary/30"
+                >
+                  <ExternalLink className="w-4 h-4 mr-1" />
+                  Dr. Green Portal
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Open Dr. Green DApp admin for client approval</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
 
         {/* Client List */}

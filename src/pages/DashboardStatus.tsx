@@ -8,7 +8,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { CheckCircle2, Clock, Lock, UserCircle, FileText, Shield, Loader2, RefreshCw, AlertTriangle } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { CheckCircle2, Clock, Lock, UserCircle, FileText, Shield, Loader2, RefreshCw, AlertTriangle, Search } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useToast } from '@/hooks/use-toast';
 
@@ -22,10 +23,67 @@ interface VerificationStep {
 
 export default function DashboardStatus() {
   const navigate = useNavigate();
-  const { drGreenClient, isLoading, syncVerificationFromDrGreen } = useShop();
+  const { drGreenClient, isLoading, syncVerificationFromDrGreen, refreshClient } = useShop();
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [lookupResult, setLookupResult] = useState<string | null>(null);
+  const [isLookingUp, setIsLookingUp] = useState(false);
   const { toast } = useToast();
+
+  // Manual lookup from Dr. Green API
+  const handleManualLookup = useCallback(async () => {
+    setIsLookingUp(true);
+    setLookupResult('Checking Dr. Green records...');
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('drgreen-proxy', {
+        body: { action: 'get-client-by-auth-email' },
+      });
+      
+      if (error) {
+        setLookupResult('Error: Could not connect to verification system');
+        toast({
+          title: 'Lookup Failed',
+          description: 'Could not connect to the verification system.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      
+      if (data?.found) {
+        const status = data.adminApproval === 'VERIFIED' && data.isKYCVerified
+          ? '✓ Verified'
+          : data.adminApproval === 'PENDING'
+          ? '⏳ Pending Approval'
+          : `Status: ${data.adminApproval}`;
+        
+        setLookupResult(`Found! ${data.firstName || ''} ${data.lastName || ''} - ${status}`);
+        
+        // Refresh the client data to update local state
+        await refreshClient();
+        
+        toast({
+          title: 'Profile Found',
+          description: `Your profile has been located. Status: ${data.adminApproval}`,
+        });
+      } else {
+        setLookupResult(`No profile found for your email address. Checked ${data?.totalClientsChecked || 0} records.`);
+        toast({
+          title: 'No Profile Found',
+          description: 'Please complete registration to create your profile.',
+        });
+      }
+    } catch (err) {
+      setLookupResult('Error: Connection failed');
+      toast({
+        title: 'Connection Error',
+        description: 'Please check your connection and try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLookingUp(false);
+    }
+  }, [refreshClient, toast]);
 
   // Manual refresh handler
   const handleRefreshStatus = useCallback(async () => {
@@ -216,6 +274,42 @@ export default function DashboardStatus() {
                 </CardHeader>
 
                 <CardContent className="pt-6">
+                  {/* Manual Lookup Section */}
+                  {!hasClient && (
+                    <div className="mb-6 p-4 rounded-xl border border-border bg-muted/30">
+                      <div className="flex items-center justify-between mb-3">
+                        <h3 className="font-medium text-sm">Check Existing Profile</h3>
+                        {lookupResult && (
+                          <Badge variant={lookupResult.includes('Found!') ? 'default' : 'secondary'} className="text-xs">
+                            {lookupResult.includes('Found!') ? 'Found' : 'Not Found'}
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-sm text-muted-foreground mb-3">
+                        Already registered with Dr. Green? Check if your profile exists.
+                      </p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleManualLookup}
+                        disabled={isLookingUp}
+                        className="w-full"
+                      >
+                        {isLookingUp ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <Search className="mr-2 h-4 w-4" />
+                        )}
+                        {isLookingUp ? 'Checking...' : 'Look Up My Profile'}
+                      </Button>
+                      {lookupResult && (
+                        <p className={`mt-3 text-xs ${lookupResult.includes('Found!') ? 'text-emerald-600' : 'text-muted-foreground'}`}>
+                          {lookupResult}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
                   {/* Sync Required Alert */}
                   {hasLocalClientId && (
                     <Alert variant="default" className="mb-6 border-amber-500/30 bg-amber-500/10">

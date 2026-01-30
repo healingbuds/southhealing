@@ -2233,93 +2233,126 @@ serve(async (req) => {
         // Note: The API 'search' param only works with clientName, so we need to 
         // fetch clients and filter by email server-side
         try {
-          // Strategy: Fetch a reasonable batch and filter by email
-          // The API may return clients ordered by creation date
-          const queryParams: Record<string, string | number> = {
-            take: 100, // Fetch more to increase chance of finding the client
-            page: 1,
-            orderBy: 'desc',
-          };
+          // Strategy: Multi-page fetch to ensure we don't miss clients
+          // Fetch up to 3 pages (300 clients) to improve discovery rate
+          const MAX_PAGES = 3;
+          const PAGE_SIZE = 100;
+          let allClients: any[] = [];
+          let foundClient: any = null;
+          let foundOnPage = 0;
           
-          logInfo("Querying Dr. Green for clients to find by email", { take: queryParams.take });
-          const searchResponse = await drGreenRequestQuery("/dapp/clients", queryParams);
-          
-          if (!searchResponse.ok) {
-            const errorBody = await searchResponse.text();
-            logWarn("Dr. Green client list failed", { 
-              status: searchResponse.status,
-              errorBody: errorBody.slice(0, 200),
-            });
-            return new Response(
-              JSON.stringify({ success: false, found: false, error: 'API request failed', apiError: errorBody.slice(0, 200) }),
-              { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          for (let page = 1; page <= MAX_PAGES; page++) {
+            const queryParams: Record<string, string | number> = {
+              take: PAGE_SIZE,
+              page,
+              orderBy: 'desc',
+            };
+            
+            logInfo(`Querying Dr. Green clients page ${page}/${MAX_PAGES}`, { take: PAGE_SIZE });
+            const searchResponse = await drGreenRequestQuery("/dapp/clients", queryParams);
+            
+            if (!searchResponse.ok) {
+              const errorBody = await searchResponse.text();
+              logWarn("Dr. Green client list failed", { 
+                status: searchResponse.status,
+                page,
+                errorBody: errorBody.slice(0, 200),
+              });
+              break; // Stop pagination on error
+            }
+            
+            const searchData = await searchResponse.json();
+            
+            // API might return { data: { items: [...] } } or { data: [...] } or { clients: [...] }
+            let clients: any[] | null = null;
+            if (Array.isArray(searchData.data)) {
+              clients = searchData.data;
+            } else if (searchData.data?.items && Array.isArray(searchData.data.items)) {
+              clients = searchData.data.items;
+            } else if (Array.isArray(searchData.clients)) {
+              clients = searchData.clients;
+            } else if (searchData.data?.clients && Array.isArray(searchData.data.clients)) {
+              clients = searchData.data.clients;
+            } else if (Array.isArray(searchData)) {
+              clients = searchData;
+            }
+            
+            if (!clients || clients.length === 0) {
+              logInfo(`No more clients on page ${page}, stopping pagination`);
+              break;
+            }
+            
+            // Log email prefixes for debugging (masked for privacy)
+            const emailPrefixes = clients.map((c: any) => 
+              c.email ? c.email.slice(0, 3).toLowerCase() + '***' : 'no-email'
             );
-          }
-          
-          const searchData = await searchResponse.json();
-          logInfo("API response structure", { 
-            hasData: !!searchData.data, 
-            hasClients: !!searchData.clients,
-            dataType: typeof searchData.data,
-            topLevelKeys: Object.keys(searchData).slice(0, 5),
-          });
-          
-          // API might return { data: { items: [...] } } or { data: [...] } or { clients: [...] }
-          let clients: any[] | null = null;
-          if (Array.isArray(searchData.data)) {
-            clients = searchData.data;
-          } else if (searchData.data?.items && Array.isArray(searchData.data.items)) {
-            clients = searchData.data.items;
-          } else if (Array.isArray(searchData.clients)) {
-            clients = searchData.clients;
-          } else if (searchData.data?.clients && Array.isArray(searchData.data.clients)) {
-            clients = searchData.data.clients;
-          } else if (Array.isArray(searchData)) {
-            clients = searchData;
-          }
-          
-          if (clients && Array.isArray(clients)) {
-            // Filter clients by email (case-insensitive)
-            const matchingClient = clients.find((c: any) => 
+            logInfo(`Page ${page} client emails (masked)`, { 
+              clientCount: clients.length, 
+              emailPrefixes: emailPrefixes.slice(0, 15),
+              searchingFor: userEmail.slice(0, 3).toLowerCase() + '***',
+            });
+            
+            allClients = [...allClients, ...clients];
+            
+            // Check for match on this page
+            const match = clients.find((c: any) => 
               c.email && c.email.toLowerCase() === userEmail.toLowerCase()
             );
             
-            if (matchingClient) {
-              // Normalize the response to a consistent format
-              const normalizedClient = {
-                success: true,
-                found: true,
-                clientId: matchingClient.id || matchingClient.clientId || matchingClient.client_id,
-                email: matchingClient.email,
-                firstName: matchingClient.firstName || matchingClient.first_name,
-                lastName: matchingClient.lastName || matchingClient.last_name,
-                isKYCVerified: matchingClient.isKYCVerified ?? matchingClient.is_kyc_verified ?? false,
-                adminApproval: matchingClient.adminApproval || matchingClient.admin_approval || 'PENDING',
-                kycLink: matchingClient.kycLink || matchingClient.kyc_link || null,
-                countryCode: matchingClient.countryCode || matchingClient.country_code || null,
-              };
-              
-              logInfo("Found existing Dr. Green client by email match", { 
-                hasClientId: !!normalizedClient.clientId,
-                isVerified: normalizedClient.isKYCVerified,
-                adminApproval: normalizedClient.adminApproval,
-              });
-              
-              return new Response(JSON.stringify(normalizedClient), {
-                status: 200,
-                headers: { ...corsHeaders, "Content-Type": "application/json" },
-              });
-            } else {
-              logInfo("No Dr. Green client found matching email", { clientsChecked: clients.length });
-              return new Response(
-                JSON.stringify({ success: true, found: false, message: 'No client found for this email' }),
-                { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-              );
+            if (match) {
+              foundClient = match;
+              foundOnPage = page;
+              logInfo(`Found matching client on page ${page}!`);
+              break; // Found the client, no need to continue
             }
+            
+            // If fewer than PAGE_SIZE returned, we've reached the end
+            if (clients.length < PAGE_SIZE) {
+              logInfo(`Last page reached (page ${page} had ${clients.length} clients)`);
+              break;
+            }
+          }
+          
+          if (foundClient) {
+            // Normalize the response to a consistent format
+            const normalizedClient = {
+              success: true,
+              found: true,
+              clientId: foundClient.id || foundClient.clientId || foundClient.client_id,
+              email: foundClient.email,
+              firstName: foundClient.firstName || foundClient.first_name,
+              lastName: foundClient.lastName || foundClient.last_name,
+              isKYCVerified: foundClient.isKYCVerified ?? foundClient.is_kyc_verified ?? false,
+              adminApproval: foundClient.adminApproval || foundClient.admin_approval || 'PENDING',
+              kycLink: foundClient.kycLink || foundClient.kyc_link || null,
+              countryCode: foundClient.countryCode || foundClient.country_code || null,
+              foundOnPage,
+              totalClientsChecked: allClients.length,
+            };
+            
+            logInfo("Found existing Dr. Green client by email match", { 
+              hasClientId: !!normalizedClient.clientId,
+              isVerified: normalizedClient.isKYCVerified,
+              adminApproval: normalizedClient.adminApproval,
+              foundOnPage,
+            });
+            
+            return new Response(JSON.stringify(normalizedClient), {
+              status: 200,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
           } else {
-            logInfo("Unexpected response format from clients endpoint");
+            logInfo("No Dr. Green client found matching email after multi-page search", { 
+              totalClientsChecked: allClients.length,
+              pagesSearched: Math.min(MAX_PAGES, Math.ceil(allClients.length / PAGE_SIZE) || 1),
+            });
             return new Response(
-              JSON.stringify({ success: true, found: false, message: 'Unexpected API response format' }),
+              JSON.stringify({ 
+                success: true, 
+                found: false, 
+                message: 'No client found for this email',
+                totalClientsChecked: allClients.length,
+              }),
               { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
             );
           }
