@@ -1,72 +1,118 @@
 
-# COMPLETED: Dr. Green Client Approval - Architecture Correction
+# Plan: Configure Real User Accounts and Dr. Green API Sync
 
-## Summary
+## Current Situation
 
-The implementation has been updated to reflect that **client approval/rejection cannot be done via the Dr. Green API**. The only documented client PATCH operations are `/activate` and `/deactivate` (for isActive status), not for `adminApproval`.
+The remixed project has:
+- Empty database (no users)
+- A seed function with mock test accounts that won't sync with the live Dr. Green API
+- No accounts for Scott or Kayliegh in Supabase (though they exist in Dr. Green)
+
+## What Needs to Happen
+
+### Phase 1: Update Seed Function for Real Accounts
+
+Remove all mock test accounts EXCEPT admin, and add Scott and Kayliegh as real accounts that will properly sync with the Dr. Green API.
+
+**Changes to `seed-test-users` edge function:**
+
+1. Remove these mock accounts:
+   - `new@healingbuds.test`
+   - `pending@healingbuds.test`
+   - `kycdone@healingbuds.test`
+   - `patient@healingbuds.test`
+   - `rejected@healingbuds.test`
+
+2. Keep only:
+   - `admin@healingbuds.test` (for admin access testing)
+
+3. Add real accounts for Scott and Kayliegh:
+   - Will need their actual emails from the Dr. Green API
+   - Will set `createClient: false` initially so the app can fetch their real client data from Dr. Green API on first sync
+   - Passwords can be set temporarily (they can reset via email)
+
+### Phase 2: Run the Seed Function
+
+After updating the seed function:
+1. Deploy the updated edge function
+2. Call the seed function to create the accounts
+
+### Phase 3: Link Accounts to Dr. Green
+
+After accounts are created:
+1. Users log in with their credentials
+2. The `syncVerificationFromDrGreen` function will:
+   - Fetch their client record from Dr. Green API by email
+   - Create/update the local `drgreen_clients` record with correct status
+   - Their `isEligible` state will reflect the live Dr. Green approval
+
+### Phase 4: Update Auth.tsx
+
+Remove the test account UI dropdown entirely OR update it to only show the admin test account.
 
 ---
 
-## Changes Made
+## Technical Details
 
-### 1. Edge Function (`supabase/functions/drgreen-proxy/index.ts`)
+### Seed Function Changes
 
-- **Deprecated** the `dapp-verify-client` action - it now throws a clear error explaining that approval must be done in the Dr. Green DApp admin portal
-- **Added** new `sync-client-status` action that fetches live client data from `GET /dapp/clients/{clientId}`
+```typescript
+const TEST_USERS = [
+  // Only keep admin for testing admin features
+  {
+    email: "admin@healingbuds.test",
+    password: "Admin123!",
+    fullName: "Admin User",
+    createClient: false, // Will sync from Dr. Green
+    role: "admin",
+  },
+  // Add Scott's real account
+  {
+    email: "scott@[actual-email]", // Need actual email
+    password: "TempPassword123!", // Temporary, can reset
+    fullName: "Scott [Lastname]",
+    createClient: false, // Let app sync from Dr. Green
+    role: null,
+  },
+  // Add Kayliegh's real account
+  {
+    email: "kayliegh@[actual-email]", // Need actual email
+    password: "TempPassword123!", // Temporary, can reset
+    fullName: "Kayliegh [Lastname]",
+    createClient: false, // Let app sync from Dr. Green
+    role: null,
+  },
+];
+```
 
-### 2. Admin Client Manager (`src/components/admin/AdminClientManager.tsx`)
+### Auth Flow for Linked Accounts
 
-- **Removed** Approve/Reject buttons (they never worked via API)
-- **Removed** confirmation dialog for approve/reject actions
-- **Added** "Pending Dr. Green Review" badge with tooltip explanation
-- **Added** "Sync" button to refresh individual client status from live API
-- **Added** "Dr. Green" button to open the external admin portal
-- UI now correctly shows:
-  - PENDING → Yellow badge + Sync button + External link
-  - VERIFIED → Green "Approved" badge
-  - REJECTED → Red badge + Sync button
-
-### 3. API Hook (`src/hooks/useDrGreenApi.ts`)
-
-- **Deprecated** `verifyDappClient` function with a console warning
-- **Added** `syncClientStatus` function to fetch live client data
-
----
-
-## Architecture (Final)
+When Scott or Kayliegh log in:
 
 ```
-Dr. Green DApp Admin Portal
-├── Approve/Reject clients (ONLY place to change adminApproval)
-└── Sends webhook events → drgreen-webhook → Updates local DB
-
-Healing Buds Admin Panel
-├── View client list (from live API)
-├── Sync Status button → GET /dapp/clients/{id} → Refresh adminApproval
-└── Link to Dr. Green DApp for approval actions
+1. Supabase Auth validates credentials
+2. App calls fetchClient() → No local drgreen_clients record
+3. App shows "Registration needed" or auto-triggers sync
+4. Sync queries Dr. Green API: GET /dapp/clients?search=email
+5. If found: Creates local drgreen_clients record with real client ID
+6. isEligible becomes true if adminApproval === "VERIFIED"
 ```
 
+### Information Needed From You
+
+To complete this implementation, I need:
+
+1. **Scott's email address** (as registered in Dr. Green)
+2. **Kayliegh's email address** (as registered in Dr. Green)
+3. **Temporary passwords** for both (or confirm if they should reset via email)
+
 ---
 
-## For Kayliegh's Status
+## Security Note
 
-Since Kayliegh was approved in the Dr. Green DApp:
-1. Click "Sync" next to her name in the Admin panel
-2. Her status should update to "VERIFIED" / "Approved" badge
-3. The counts at the top (Verified tab) should increment
+Real user credentials should NEVER be stored in code. The seed function will:
+- Create Supabase auth accounts with temporary passwords
+- NOT create mock drgreen_clients records
+- Let the actual Dr. Green API sync handle client status
 
----
-
-## API Endpoints Used
-
-| Action | Endpoint | Method | Purpose |
-|--------|----------|--------|---------|
-| Fetch clients | `/dapp/clients` | GET | List all clients |
-| Sync status | `/dapp/clients/{id}` | GET | Fetch individual client (with current adminApproval) |
-| Activate | `/dapp/clients/{id}/activate` | PATCH | Set isActive=true |
-| Deactivate | `/dapp/clients/{id}/deactivate` | PATCH | Set isActive=false |
-
-**NOT AVAILABLE:**
-- ❌ `/dapp/clients/{id}/approve` - Does not exist
-- ❌ `/dapp/clients/{id}/reject` - Does not exist
-- ❌ `PATCH /dapp/clients/{id}` with `{ adminApproval: "VERIFIED" }` - Not documented
+This ensures the Dr. Green API remains the single source of truth for client eligibility.
