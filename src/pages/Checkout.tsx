@@ -39,8 +39,8 @@ const Checkout = () => {
       // Step 1: Empty existing Dr. Green cart to ensure clean state
       setPaymentStatus('Clearing cart...');
       const emptyResult = await emptyCart(clientId);
-      // Empty cart may return 404 if cart doesn't exist - that's OK
-      if (emptyResult.error && !emptyResult.error.includes('404') && !emptyResult.error.includes('not found')) {
+      // Empty cart may return 404/502 if cart doesn't exist - that's OK
+      if (emptyResult.error && !emptyResult.error.includes('404') && !emptyResult.error.includes('not found') && !emptyResult.error.includes('Cart not found')) {
         console.warn('Cart empty warning:', emptyResult.error);
       }
 
@@ -58,7 +58,7 @@ const Checkout = () => {
         }
       }
 
-      // Step 3: Create order from server-side cart  
+      // Step 3: Create order from server-side cart
       setPaymentStatus('Creating order...');
       const orderResult = await placeOrder({
         clientId: clientId,
@@ -71,8 +71,7 @@ const Checkout = () => {
       const createdOrderId = orderResult.data.orderId;
       setPaymentStatus('Initiating payment...');
 
-      // Step 2: Create payment via Dr Green API
-      // Use client's country for payment currency, fallback to shop context country
+      // Step 4: Create payment via Dr Green API
       const clientCountry = drGreenClient.country_code || countryCode || 'PT';
       const paymentResult = await createPayment({
         orderId: createdOrderId,

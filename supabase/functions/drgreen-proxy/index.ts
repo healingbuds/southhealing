@@ -2145,10 +2145,12 @@ serve(async (req) => {
         break;
       }
       
-      // Add item to cart - POST /dapp/carts with cart data
+      // Add item to cart - POST /dapp/carts with clientCartId and items array
+      // Per API error: expects clientCartId (UUID) and items array with [{strainId, quantity}]
       case "add-to-cart": {
         const cartData = body.data || {};
-        if (!cartData.clientId && !cartData.cartId) {
+        const clientId = cartData.clientId || cartData.cartId;
+        if (!clientId) {
           throw new Error("clientId or cartId is required");
         }
         if (!cartData.strainId) {
@@ -2157,12 +2159,18 @@ serve(async (req) => {
         if (!cartData.quantity || cartData.quantity < 1) {
           throw new Error("quantity must be at least 1");
         }
-        // POST /dapp/carts adds an item to the client's cart
-        response = await drGreenRequest("/dapp/carts", "POST", {
-          clientId: cartData.clientId || cartData.cartId,
-          strainId: cartData.strainId,
-          quantity: cartData.quantity,
-        });
+        // POST /dapp/carts - API expects clientCartId (UUID) and items array
+        const cartPayload = {
+          clientCartId: clientId,
+          items: [
+            {
+              strainId: cartData.strainId,
+              quantity: cartData.quantity,
+            }
+          ]
+        };
+        logInfo("Adding to cart", { clientId, strainId: cartData.strainId, quantity: cartData.quantity });
+        response = await drGreenRequestBody("/dapp/carts", "POST", cartPayload);
         break;
       }
       
