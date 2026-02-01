@@ -1,15 +1,28 @@
 
-# Plan: Insert Client Records to Enable Checkout
 
-## Problem
-The `drgreen_clients` table is **empty** - this is why checkout fails. The client linking for Kayliegh and Scott was never actually executed.
+# Plan: Reassign Dr. Green Client Records
 
-## Solution
-Execute a single database INSERT to link both users to their Dr. Green client IDs.
+## Current State
 
-## Database Migration
+| User | Supabase User ID | Current Dr. Green Link |
+|------|------------------|------------------------|
+| Admin User | `6fc36e5c-92c5-43d4-a162-3d6385190590` | None |
+| Scott Hickling | `f9ceca52-abd4-4da7-a747-e8fa1e971867` | `fb70d208...` (Healing Buds) |
+| Kayliegh | `7b4c7b03-7630-46e3-9337-4c56cad600c8` | `47542db8...` ✓ |
 
-**SQL to Execute:**
+## Required Changes
+
+### Step 1: Update Scott's record to use his personal client ID
+```sql
+UPDATE public.drgreen_clients 
+SET 
+  drgreen_client_id = 'dfd81e64-c17d-4a1b-8111-cdf49f879e82',
+  email = 'scott.k1@outlook.com',
+  full_name = 'Scott Hickling'
+WHERE user_id = 'f9ceca52-abd4-4da7-a747-e8fa1e971867';
+```
+
+### Step 2: Insert new record for Admin User with Healing Buds client
 ```sql
 INSERT INTO public.drgreen_clients (
   user_id,
@@ -19,19 +32,9 @@ INSERT INTO public.drgreen_clients (
   country_code,
   is_kyc_verified,
   admin_approval
-) VALUES 
-(
-  '7b4c7b03-7630-46e3-9337-4c56cad600c8',  -- Kayliegh's Supabase user ID
-  '47542db8-3982-4204-bd32-2f36617c5d3d',  -- Her Dr. Green client ID
-  'kayliegh.sm@gmail.com',
-  'Kayliegh Moutinho',
-  'ZA',
-  true,
-  'VERIFIED'
-),
-(
-  'f9ceca52-abd4-4da7-a747-e8fa1e971867',  -- Scott's Supabase user ID
-  'fb70d208-8f12-4444-9b1b-e92bd68f675f',  -- His Dr. Green client ID  
+) VALUES (
+  '6fc36e5c-92c5-43d4-a162-3d6385190590',
+  'fb70d208-8f12-4444-9b1b-e92bd68f675f',
   'scott@healingbuds.global',
   'Healing Buds',
   'ZA',
@@ -40,28 +43,21 @@ INSERT INTO public.drgreen_clients (
 );
 ```
 
-## What This Enables
+## Final State After Changes
 
-Once inserted:
-- ✅ Kayliegh can browse shop (country_code = ZA)
-- ✅ Kayliegh can add items to cart
-- ✅ Checkout will find her `drgreen_client_id` for order creation
-- ✅ Shipping address fetched from Dr. Green API (or fallback form shown)
-- ✅ Same for Scott
+| User | Supabase User ID | Dr. Green Client ID | Email |
+|------|------------------|---------------------|-------|
+| Admin User | `6fc36e5c...` | `fb70d208...` | scott@healingbuds.global |
+| Scott Hickling | `f9ceca52...` | `dfd81e64...` | scott.k1@outlook.com |
+| Kayliegh | `7b4c7b03...` | `47542db8...` | kayliegh.sm@gmail.com |
 
-## Files Modified
+## Database Operations
 
-| Type | Change |
-|------|--------|
-| Database | INSERT 2 records into `drgreen_clients` |
+| Operation | Table | Description |
+|-----------|-------|-------------|
+| UPDATE | `drgreen_clients` | Change Scott's link to his personal client ID |
+| INSERT | `drgreen_clients` | Add Healing Buds client to Admin User |
 
-## Testing After Insert
+## No Code Changes Required
+This is a data-only fix.
 
-1. Kayliegh logs in via MetaMask/wallet
-2. Navigates to `/shop` 
-3. Adds products to cart (prices show in ZAR - ~R190)
-4. Proceeds to checkout
-5. Enters shipping address (fallback form)
-6. Places order
-
-No code changes needed - this is a one-time data fix.
