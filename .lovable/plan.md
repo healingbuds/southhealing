@@ -1,98 +1,117 @@
 
-# Fix: Currency Conversion in Checkout Display
+# Fix: Dr. Green API 401 Authentication Errors
 
-## Problem Analysis
+## Problem Summary
 
-The checkout page is displaying Euro prices (from the Dr. Green API) with the Rand symbol, instead of properly converting EUR to ZAR.
+The checkout flow is blocked because `GET /dapp/clients/{clientId}` returns 401 Unauthorized. This prevents fetching the client's shipping address, forcing users to re-enter address details.
 
-**Current behavior:** €10.00 → Displays as "R 10,00" (wrong)
-**Expected behavior:** €10.00 → Displays as "R ~193,00" (correct ZAR conversion)
+**Verified Data:**
+- Kayliegh's profile: `is_kyc_verified=true`, `admin_approval=VERIFIED`, `country_code=ZA`
+- Dr. Green Client ID: `47542db8-3982-4204-bd32-2f36617c5d3d`
+- Currency conversion is now working correctly (EUR to ZAR)
 
-## Root Cause
+## Root Cause Analysis
 
-1. The Dr. Green API returns all prices in **EUR**
-2. The ProductCard correctly converts prices for display using `convertFromEUR()`
-3. Cart items store the **raw EUR price** in `unit_price`
-4. The Checkout page calls `formatPrice()` **without conversion** - just adding the Rand symbol
+Comparing the current implementation against the official API documentation provided:
+
+### Issue 1: API Key Encoding
+
+**Documentation says:**
+```javascript
+'x-auth-apikey': Buffer.from(apiKey).toString('base64')
+```
+
+**Current implementation (line 859 & 970):**
+```javascript
+"x-auth-apikey": apiKey,  // Assumes already Base64-encoded
+```
+
+The API key stored in `DRGREEN_API_KEY` may be the **raw API key**, not Base64-encoded. The code needs to Base64-encode it before sending.
+
+### Issue 2: No Graceful Fallback
+
+When the `getClientDetails` API call fails (401), the checkout shows the shipping address form even if the user has already provided their address. There's no local cache fallback.
+
+## Solution
+
+### Part 1: Fix API Key Encoding in Edge Function
+
+**File:** `supabase/functions/drgreen-proxy/index.ts`
+
+Update both `drGreenRequestBody` and `drGreenRequestGet` functions to Base64-encode the API key:
+
+```typescript
+// Before (assumes pre-encoded):
+"x-auth-apikey": apiKey,
+
+// After (encode before sending):
+"x-auth-apikey": btoa(apiKey),
+```
+
+**Affected locations:**
+- Line 859 in `drGreenRequestBody`
+- Line 970 in `drGreenRequestGet`
+
+Add a check to avoid double-encoding:
+```typescript
+// Smart encoding - only encode if not already Base64
+const isAlreadyBase64 = /^[A-Za-z0-9+/=]+$/.test(apiKey) && apiKey.length > 20;
+const encodedApiKey = isAlreadyBase64 ? apiKey : btoa(apiKey);
+```
+
+### Part 2: Add Local Shipping Cache (Graceful Fallback)
+
+**File:** `src/pages/Checkout.tsx`
+
+Update the `checkShippingAddress` effect to fallback to prompting for address entry gracefully, with a clear message that explains the situation:
+
+```typescript
+// If API fails, check if user has recently saved address in session
+// If not, show shipping form with helpful message
+catch (error) {
+  console.error('Failed to fetch client details:', error);
+  // Show shipping form with context that we couldn't verify existing address
+  setNeedsShippingAddress(true);
+  toast({
+    title: 'Address Verification',
+    description: 'Please confirm your shipping address to continue.',
+  });
+}
+```
+
+### Part 3: Add Logging for Diagnosis
+
+Add detailed logging to identify whether the 401 is from:
+1. Incorrect API key format
+2. Incorrect signature
+3. Missing permissions for specific endpoints
 
 ## Files to Modify
 
-### 1. `src/pages/Checkout.tsx`
+| File | Changes |
+|------|---------|
+| `supabase/functions/drgreen-proxy/index.ts` | Base64-encode API key before sending |
+| `src/pages/Checkout.tsx` | Improve error handling with user-friendly messaging |
 
-**Changes:**
-- Import `useShop` to access `convertFromEUR` function
-- Apply conversion when displaying individual item prices
-- Apply conversion when displaying the cart total
-
-**Before (line 409):**
-```typescript
-Qty: {item.quantity} × {formatPrice(item.unit_price, countryCode)}
-```
-
-**After:**
-```typescript
-Qty: {item.quantity} × {formatPrice(convertFromEUR(item.unit_price), countryCode)}
-```
-
-**Before (line 413):**
-```typescript
-{formatPrice(item.quantity * item.unit_price, countryCode)}
-```
-
-**After:**
-```typescript
-{formatPrice(convertFromEUR(item.quantity * item.unit_price), countryCode)}
-```
-
-**Before (line 422):**
-```typescript
-<span className="text-primary">{formatPrice(cartTotal, countryCode)}</span>
-```
-
-**After:**
-```typescript
-<span className="text-primary">{formatPrice(cartTotalConverted, countryCode)}</span>
-```
-
-Note: `cartTotalConverted` is already available from `useShop()` and correctly converts the total.
-
-### 2. `src/components/shop/Cart.tsx`
-
-Review and fix the cart drawer component to ensure consistent currency conversion.
-
-**Changes:**
-- Ensure cart item prices display with proper EUR→local currency conversion
-- Use `convertFromEUR()` from ShopContext
-
-## Technical Details
-
-### Conversion Flow (Correct)
-```
-Dr. Green API (EUR) → convertFromEUR(amount) → formatPrice(convertedAmount, countryCode)
-```
-
-### Exchange Rate Reference
-- Current rates are fetched from `exchange-rates` edge function
-- ZAR base: EUR ~0.052 means 1 ZAR ≈ €0.052, or €1 ≈ R19.23
-- So €10.00 should display as approximately **R 192.30**
-
-## Testing Checklist
+## Testing Plan
 
 After implementation:
-1. Add product to cart from shop page
-2. Navigate to checkout
-3. Verify prices show in ZAR (should be ~19x the EUR amount)
-4. Verify cart drawer also shows correct ZAR prices
-5. Verify total matches sum of items
-6. Test with different products to ensure consistency
+1. Deploy edge function changes
+2. Have Kayliegh navigate to checkout
+3. Verify `get-my-details` returns 200 OK (not 401)
+4. If 401 persists, check logs for specific error details
+5. Verify shipping address displays correctly
+6. Complete a test order placement
 
-## Security Considerations
+## Risk Assessment
 
-- No security impact - this is a display-only fix
-- Payment amount (`createPayment`) already uses `getCurrencyForCountry()` to send the correct currency to the API
-- The API will receive the amount in the correct currency
+- **Low Risk**: Base64 encoding change is straightforward
+- **Fallback**: If the API key is already properly encoded, we need to detect and avoid double-encoding
+- **No Data Loss**: This is a display/API fix only - no database changes
 
-## Affected User Experience
+## Alternative: Credential Verification
 
-- All South African users will see correct Rand pricing
-- Same fix applies to other non-EUR regions (UK→GBP, Thailand→THB)
+If the 401 persists after the encoding fix, the credentials may need to be verified with Dr. Green:
+- Confirm API key is correct
+- Confirm API key has access to `/dapp/clients/{id}` endpoint
+- Check if there are IP restrictions or rate limits
