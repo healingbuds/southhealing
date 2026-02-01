@@ -62,10 +62,18 @@ const Checkout = () => {
   const [isLoadingAddress, setIsLoadingAddress] = useState(true);
   const [needsShippingAddress, setNeedsShippingAddress] = useState(false);
   const [addressMode, setAddressMode] = useState<'saved' | 'custom'>('saved');
+  const [addressManuallySaved, setAddressManuallySaved] = useState(false);
 
   // Fetch client details to check for shipping address
+  // Skip if address was manually saved in this session
   useEffect(() => {
     const checkShippingAddress = async () => {
+      // Skip re-fetch if user already saved address manually
+      if (addressManuallySaved) {
+        setIsLoadingAddress(false);
+        return;
+      }
+
       if (!drGreenClient?.drgreen_client_id) {
         setIsLoadingAddress(false);
         return;
@@ -97,7 +105,7 @@ const Checkout = () => {
     };
 
     checkShippingAddress();
-  }, [drGreenClient, getClientDetails]);
+  }, [drGreenClient, getClientDetails, addressManuallySaved]);
 
   // Handle address mode toggle
   const handleAddressModeChange = (mode: 'saved' | 'custom') => {
@@ -109,6 +117,8 @@ const Checkout = () => {
 
   const handleShippingAddressSaved = (address: ShippingAddress) => {
     console.log('[Checkout] Address saved:', address);
+    // Mark as manually saved to prevent useEffect from re-fetching and overwriting
+    setAddressManuallySaved(true);
     // Set address FIRST, before changing needsShippingAddress
     setShippingAddress(address);
     setSavedAddress(address); // Also save as "saved" address
