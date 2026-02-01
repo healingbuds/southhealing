@@ -48,6 +48,7 @@ const AdminStrains = lazy(() => import("./pages/AdminStrains"));
 const AdminStrainSync = lazy(() => import("./pages/AdminStrainSync"));
 const AdminStrainKnowledge = lazy(() => import("./pages/AdminStrainKnowledge"));
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
+const AdminRoles = lazy(() => import("./pages/AdminRoles"));
 const Research = lazy(() => import("./pages/Research"));
 const TheWire = lazy(() => import("./pages/TheWire"));
 const ArticleDetail = lazy(() => import("./pages/ArticleDetail"));
@@ -110,6 +111,7 @@ const AnimatedRoutes = () => {
           <Route path="/admin/strains" element={<AdminStrains />} />
           <Route path="/admin/strain-sync" element={<AdminStrainSync />} />
           <Route path="/admin/strain-knowledge" element={<AdminStrainKnowledge />} />
+          <Route path="/admin/roles" element={<AdminRoles />} />
           
           
           {/* Legal */}

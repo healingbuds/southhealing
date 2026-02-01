@@ -62,6 +62,7 @@ const navItems: NavItem[] = [
   { to: "/admin/strains", label: "Strains", icon: Leaf },
   { to: "/admin/strain-sync", label: "Strain Sync", icon: RefreshCw },
   { to: "/admin/strain-knowledge", label: "Knowledge Base", icon: Database },
+  { to: "/admin/roles", label: "User Roles", icon: Users },
 ];
 
 const secondaryNavItems: NavItem[] = [
