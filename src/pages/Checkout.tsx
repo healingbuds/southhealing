@@ -49,7 +49,7 @@ const Checkout = () => {
   const navigate = useNavigate();
   const { t } = useTranslation('shop');
   const { toast } = useToast();
-  const { createPayment, getPayment, createOrder, getClientDetails } = useDrGreenApi();
+  const { createPayment, getPayment, createOrder, getClientDetails, addToCart, placeOrder } = useDrGreenApi();
   const { saveOrder } = useOrderTracking();
   const [isProcessing, setIsProcessing] = useState(false);
   const [orderComplete, setOrderComplete] = useState(false);
@@ -145,33 +145,66 @@ const Checkout = () => {
     }
 
     setIsProcessing(true);
-    setPaymentStatus('Creating order...');
+    setPaymentStatus('Syncing cart...');
 
     try {
       const clientId = drGreenClient.drgreen_client_id;
 
-      // Use direct order creation with items + shipping (guaranteed to include address)
-      const orderResult = await retryOperation(
-        () => createOrder({
+      // Step 1: Sync cart items to Dr. Green server-side cart
+      // The Dr. Green API requires items in their cart before order creation
+      console.log('[Checkout] Syncing cart items to Dr. Green API...');
+      for (const item of cart) {
+        const addResult = await addToCart({
           clientId: clientId,
-          items: cart.map(item => ({
-            productId: item.strain_id,
-            quantity: item.quantity,
-            price: item.unit_price,
-          })),
-          // Always include shipping address in order payload
-          shippingAddress: {
-            street: shippingAddress.address1,
-            address2: shippingAddress.address2 || '',
-            city: shippingAddress.city,
-            state: shippingAddress.state || shippingAddress.city,
-            zipCode: shippingAddress.postalCode,
-            country: shippingAddress.country,
-            countryCode: shippingAddress.countryCode,
-          },
-        }),
-        'Create order'
+          strainId: item.strain_id,
+          quantity: item.quantity,
+        });
+        
+        if (addResult.error) {
+          console.warn(`[Checkout] Failed to add item ${item.strain_name} to server cart:`, addResult.error);
+          // Don't fail completely - the item might already be in cart or the API might accept direct order
+        } else {
+          console.log(`[Checkout] Added ${item.strain_name} (qty: ${item.quantity}) to Dr. Green cart`);
+        }
+      }
+
+      setPaymentStatus('Creating order...');
+
+      // Step 2: Try to place order from cart first (preferred method)
+      let orderResult: { data: { orderId: string; status?: string; totalAmount?: number } | null; error: string | null };
+      
+      const cartOrderResult = await retryOperation(
+        () => placeOrder({ clientId }),
+        'Place order from cart'
       );
+
+      // If cart-based order fails, fall back to direct order creation
+      if (cartOrderResult.error || !cartOrderResult.data?.orderId) {
+        console.log('[Checkout] Cart-based order failed, trying direct creation...', cartOrderResult.error);
+        const directOrderResult = await retryOperation(
+          () => createOrder({
+            clientId: clientId,
+            items: cart.map(item => ({
+              productId: item.strain_id,
+              quantity: item.quantity,
+              price: item.unit_price,
+            })),
+            shippingAddress: {
+              street: shippingAddress.address1,
+              address2: shippingAddress.address2 || '',
+              city: shippingAddress.city,
+              state: shippingAddress.state || shippingAddress.city,
+              zipCode: shippingAddress.postalCode,
+              country: shippingAddress.country,
+              countryCode: shippingAddress.countryCode,
+            },
+          }),
+          'Create order directly'
+        );
+        orderResult = directOrderResult;
+      } else {
+        orderResult = cartOrderResult;
+      }
 
       if (orderResult.error || !orderResult.data?.orderId) {
         throw new Error(orderResult.error || 'Failed to create order');

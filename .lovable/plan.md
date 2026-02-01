@@ -1,63 +1,31 @@
 
 
-# Fix: Shipping Address Form State Persistence
+# Fix: Shipping Address Form State Persistence ✅ COMPLETED
 
 ## Problem Identified
 During end-to-end testing, the shipping address form on the checkout page resets after clicking "Save & Continue". The form values don't persist and no API call is made to save the address.
 
 ## Root Cause
-The `ShippingAddressForm` component is designed to call `onSuccess` with the address data, which then sets `needsShippingAddress(false)` in the parent Checkout component. However, when this state change occurs, the component may be unmounting/remounting, causing the form to reset before the address is properly captured.
+The `ShippingAddressForm` component is designed to call `onSuccess` with the address data, which then sets `needsShippingAddress(false)` in the parent Checkout component. However, when this state change occurs, the `useEffect` re-fetched and overwrote the manually-saved address.
 
-## Technical Fix
+## Fix Applied
+Added `addressManuallySaved` flag to prevent useEffect from overwriting manually saved addresses.
 
-### File: `src/pages/Checkout.tsx`
+---
 
-Update the `handleShippingAddressSaved` function to ensure address is captured before state change:
+# Fix: Cart Sync Before Order Placement ✅ COMPLETED
 
-```typescript
-const handleShippingAddressSaved = (address: ShippingAddress) => {
-  console.log('[Checkout] Address saved:', address);
-  // Set address FIRST, before changing needsShippingAddress
-  setShippingAddress(address);
-  setSavedAddress(address); // Also save as "saved" address
-  // Then update state to show the address selection UI
-  setNeedsShippingAddress(false);
-  setAddressMode('saved');
-  toast({
-    title: 'Shipping Address Saved',
-    description: 'You can now proceed with your order.',
-  });
-};
-```
+## Problem Identified
+Dr. Green API returns 409 "Client does not have any item in the cart" when attempting to create an order.
 
-### File: `src/components/shop/ShippingAddressForm.tsx`
+## Root Cause
+The Dr. Green API requires items to be in their server-side cart system before an order can be placed. The application was managing cart locally but not syncing to Dr. Green's cart.
 
-Add console logging to debug form submission:
+## Fix Applied
+1. Added cart sync step in `handlePlaceOrder` before order creation
+2. Iterates through local cart items and calls `addToCart` for each
+3. Tries `placeOrder` (cart-based) first, falls back to `createOrder` (direct) if needed
+4. Added `addToCart` and `placeOrder` to hook destructuring
 
-```typescript
-const handleSubmit = async (data: AddressFormData) => {
-  console.log('[ShippingAddressForm] Form submitted with:', data);
-  setIsSaving(true);
-  // ... rest of logic
-  
-  // Before calling onSuccess
-  console.log('[ShippingAddressForm] Calling onSuccess with:', shippingData);
-  onSuccess?.(shippingData);
-};
-```
-
-## Testing After Fix
-
-1. Log in as kayliegh.sm@gmail.com
-2. Add item to cart
-3. Go to checkout
-4. Fill in Pretoria address (123 Church Street, Pretoria, Gauteng, 0001)
-5. Click "Save & Continue"
-6. Verify address persists and "Place Order" button becomes active
-7. Click "Place Order" to test full order creation with shipping in payload
-8. Check drgreen-proxy logs to confirm order includes shipping address
-
-## Files to Modify
-- `src/pages/Checkout.tsx` - Add logging and fix state order
-- `src/components/shop/ShippingAddressForm.tsx` - Add debug logging
-
+## Files Modified
+- `src/pages/Checkout.tsx` - Cart sync before order, fallback logic
