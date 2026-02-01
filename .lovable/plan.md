@@ -1,130 +1,154 @@
 
-# Plan: Fix Dr. Green Order Creation to Match Official API
+# Plan: Fix Cart API Integration and Add Retry Logic for Checkout
 
-## Problem Summary
+## Problem Analysis
 
-Based on the official Dr. Green API documentation provided, the current checkout implementation is using an incorrect order creation pattern. The API documentation clearly shows that orders should be created by **passing items directly in the request body**, not by syncing to a server-side cart first.
+Based on edge function logs, the checkout flow is failing at the cart sync step:
 
-**Current (incorrect) flow:**
-```
-Local cart → Empty API cart → Add items to API cart → Create order (no items) → ERROR
-```
+| Step | API Call | Status | Issue |
+|------|----------|--------|-------|
+| 1. Empty cart | `DELETE /dapp/carts/:clientId` | 502/retry | Expected - cart may not exist |
+| 2. Add to cart | `POST /dapp/carts` | **400** | Payload format incorrect |
+| 3. Place order | `POST /dapp/orders` | 409 | "Client does not have any item in the cart" |
 
-**Correct flow (per documentation):**
-```
-Local cart → Create order with items in body → Success
-```
+The root cause is the **add-to-cart payload format**. The Orders API documentation shows items use `productId`, not `strainId`. The cart API may follow the same convention.
 
 ---
 
-## Technical Changes Required
+## Technical Changes
 
-### 1. Update Edge Function Proxy
+### 1. Fix Cart Payload Format
 **File:** `supabase/functions/drgreen-proxy/index.ts`
 
-Update the `create-order` and `place-order` actions to properly format the request per documentation:
+Update the `add-to-cart` action to try both field names and add response logging:
 
 ```typescript
-case "create-order": {
-  const orderData = body.data || {};
-  if (!orderData.clientId) throw new Error("clientId is required");
-  if (!orderData.items || !Array.isArray(orderData.items) || orderData.items.length === 0) {
-    throw new Error("items array is required and must not be empty");
-  }
+case "add-to-cart": {
+  const cartData = body.data || {};
+  const clientId = cartData.clientId || cartData.cartId;
   
-  // Format per API documentation
-  const payload = {
-    clientId: orderData.clientId,
-    items: orderData.items.map(item => ({
-      productId: item.strainId || item.productId,
-      quantity: item.quantity,
-      price: item.price || item.unit_price
-    })),
-    shippingAddress: orderData.shippingAddress,
-    notes: orderData.notes
+  // Try productId format first (per Orders API docs), fallback to strainId
+  const cartPayload = {
+    clientId: clientId, // Try clientId instead of clientCartId
+    items: [
+      {
+        productId: cartData.strainId, // Use productId per API docs
+        quantity: cartData.quantity,
+      }
+    ]
   };
   
-  response = await drGreenRequestBody("/dapp/orders", "POST", payload);
+  logInfo("Adding to cart", { payload: cartPayload });
+  response = await drGreenRequestBody("/dapp/carts", "POST", cartPayload);
+  
+  // Log response for debugging
+  logInfo("Cart response", { 
+    status: response.status,
+    body: response.data 
+  });
   break;
 }
 ```
 
-### 2. Update Checkout Component
+### 2. Add Retry Logic for Cart Operations
 **File:** `src/pages/Checkout.tsx`
 
-Simplify `handlePlaceOrder` to pass items directly to order creation instead of syncing cart:
+Add retry logic with exponential backoff for cart sync failures:
 
 ```typescript
 const handlePlaceOrder = async () => {
-  if (!drGreenClient || cart.length === 0) return;
+  // ... existing setup ...
 
-  setIsProcessing(true);
-  setPaymentStatus('Creating order...');
-
-  try {
-    const clientId = drGreenClient.drgreen_client_id;
-    
-    // Create order with items directly (per API documentation)
-    const orderResult = await createOrder({
-      clientId: clientId,
-      items: cart.map(item => ({
-        productId: item.strain_id,
-        quantity: item.quantity,
-        price: item.unit_price,
-      })),
-      shippingAddress: drGreenClient.shipping_address || undefined,
-    });
-
-    if (orderResult.error || !orderResult.data) {
-      throw new Error(orderResult.error || 'Failed to create order');
+  const retryOperation = async <T,>(
+    operation: () => Promise<{ data: T | null; error: string | null }>,
+    operationName: string,
+    maxRetries: number = 3
+  ): Promise<{ data: T | null; error: string | null }> => {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      const result = await operation();
+      if (!result.error) return result;
+      
+      // Don't retry on client errors (validation issues)
+      if (result.error.includes('400') || result.error.includes('validation')) {
+        return result;
+      }
+      
+      if (attempt < maxRetries) {
+        const delay = Math.pow(2, attempt) * 500; // 1s, 2s, 4s
+        console.log(`${operationName} failed, retrying in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
     }
+    return { data: null, error: `${operationName} failed after ${maxRetries} attempts` };
+  };
 
-    const createdOrderId = orderResult.data.orderId;
-    // ... rest of payment flow unchanged
-  } catch (error) {
-    // ... existing error handling
+  // Use retry logic for cart operations
+  setPaymentStatus('Syncing cart items...');
+  for (const item of cart) {
+    const cartResult = await retryOperation(
+      () => addToCart({
+        clientId: clientId,
+        strainId: item.strain_id,
+        quantity: item.quantity,
+      }),
+      `Add ${item.strain_name} to cart`
+    );
+
+    if (cartResult.error) {
+      throw new Error(`Failed to add ${item.strain_name} to cart: ${cartResult.error}`);
+    }
   }
+  // ... rest of flow ...
 };
 ```
 
-### 3. Update API Hook
-**File:** `src/hooks/useDrGreenApi.ts`
+### 3. Add Response Body Logging to Edge Function
+**File:** `supabase/functions/drgreen-proxy/index.ts`
 
-Update `createOrder` function signature to match documentation schema:
+Enhance error logging to capture the actual API error message:
 
 ```typescript
-const createOrder = async (orderData: {
-  clientId: string;
-  items: Array<{
-    productId: string;
-    quantity: number;
-    price: number;
-  }>;
-  shippingAddress?: {
-    street?: string;
-    city?: string;
-    state?: string;
-    zipCode?: string;
-    country?: string;
-  };
-  notes?: string;
-}) => {
-  return callProxy<{
-    orderId: string;
-    orderNumber?: string;
-    status: string;
-    totalAmount: number;
-  }>('create-order', { data: orderData });
-};
+// In drGreenRequestBody function, log error responses:
+if (!response.ok) {
+  const errorBody = await response.text();
+  logWarn(`API error response`, { 
+    status: response.status, 
+    statusText: response.statusText,
+    body: errorBody 
+  });
+  throw new Error(`Dr Green API error: ${response.status} - ${errorBody}`);
+}
 ```
 
-### 4. Remove Cart Sync Logic
+### 4. Add Fallback to Direct Order Creation
 **File:** `src/pages/Checkout.tsx`
 
-Remove the now-unnecessary cart sync steps:
-- Remove `emptyCart` call
-- Remove `addToCart` loop
-- Remove `placeOrder` call (replace with `createOrder`)
+If cart sync fails, try direct order creation as fallback:
+
+```typescript
+try {
+  // Try cart-based flow first
+  await syncCartAndPlaceOrder();
+} catch (cartError) {
+  console.warn('Cart flow failed, trying direct order creation:', cartError);
+  
+  // Fallback: try creating order with items directly
+  const directOrderResult = await createOrder({
+    clientId: clientId,
+    items: cart.map(item => ({
+      productId: item.strain_id,
+      quantity: item.quantity,
+      price: item.unit_price,
+    })),
+  });
+  
+  if (directOrderResult.error) {
+    throw new Error(directOrderResult.error);
+  }
+  
+  createdOrderId = directOrderResult.data?.orderId;
+}
+```
 
 ---
 
@@ -132,42 +156,30 @@ Remove the now-unnecessary cart sync steps:
 
 | File | Changes |
 |------|---------|
-| `supabase/functions/drgreen-proxy/index.ts` | Update `create-order` action to accept items in body |
-| `src/pages/Checkout.tsx` | Simplify order creation, remove cart sync logic |
-| `src/hooks/useDrGreenApi.ts` | Update `createOrder` interface to match API schema |
-
----
-
-## API Payload Mapping
-
-**Local Cart Item → API Order Item**
-| Local Field | API Field |
-|-------------|-----------|
-| `strain_id` | `productId` |
-| `quantity` | `quantity` |
-| `unit_price` | `price` |
-
----
-
-## Error Handling Improvements
-
-Enhance error messages for common API responses:
-
-| API Error | User-Friendly Message |
-|-----------|----------------------|
-| `Client is not active` | "Your account is pending verification. Please contact support." |
-| 400 Bad Request | "Unable to process your order. Please verify your cart and try again." |
-| 401 Unauthorized | "Session expired. Please log in again." |
-| 409 Conflict | "There was a conflict with your order. Please refresh and try again." |
+| `supabase/functions/drgreen-proxy/index.ts` | Fix cart payload format (use `productId`), add response logging |
+| `src/pages/Checkout.tsx` | Add retry logic with exponential backoff, add fallback to direct order |
 
 ---
 
 ## Testing Plan
 
 After implementation:
-1. Login as Kayliegh (`kayliegh.sm@gmail.com` / `HB2024Test!`)
-2. Add product to cart
-3. Proceed to checkout
-4. Click "Place Order"
-5. Verify no more 400/409 cart errors
-6. Check if order is created successfully or if "Client is not active" error appears (which would confirm the client needs activation in Dr. Green portal)
+1. Deploy updated edge function
+2. Login as Kayliegh (`kayliegh.sm@gmail.com` / `HB2024Test!`)
+3. Add product to cart
+4. Navigate to checkout and click "Place Order"
+5. Monitor edge function logs for:
+   - Cart payload being sent
+   - API response (200 or error with message)
+6. Verify order creation succeeds or get specific error message to diagnose further
+
+---
+
+## Expected Outcomes
+
+| Scenario | Expected Result |
+|----------|-----------------|
+| Cart API accepts `productId` format | Order created successfully |
+| Cart API still rejects | Error message captured in logs for further debugging |
+| Direct order fallback works | Order created via alternative path |
+| All methods fail | User-friendly error with specific guidance |
