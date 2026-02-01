@@ -1,132 +1,195 @@
 
 
-# Fix Scott's Missing Dr. Green Profile
+# Fix Checkout Flow - Dr. Green API Cart Sync
 
 ## Problem Summary
-Scott (`scott.k1@outlook.com`) shows "Account Pending Approval" because he has **no Dr. Green client profile**. Kayliegh works correctly because she completed the full registration flow.
 
-### Evidence from Investigation
-| User | Local Record | Dr. Green API | Status |
-|------|-------------|---------------|--------|
-| Kayliegh (`kayliegh.sm@gmail.com`) | ✓ Exists | ✓ Found - VERIFIED | Working |
-| Scott (`scott.k1@outlook.com`) | ✗ Missing | ✗ Not found (searched 6 clients) | Broken |
+The checkout is failing with a **409 Conflict: "Client does not have any item in the cart"** error because the Dr. Green API requires items to be added to its server-side cart before placing an order.
 
-### API Logs Proof
-```
-Kayliegh: "Found existing Dr. Green client by email match { adminApproval: VERIFIED }"
-Scott: "No Dr. Green client found matching email after multi-page search { totalClientsChecked: 6 }"
-```
+**Current (broken) flow:**
+Local cart → Create Order → ERROR
 
-## Root Cause
-Scott's Supabase auth account exists, but he **never completed the client registration flow** with Dr. Green. The auto-discovery correctly found no profile to link.
+**Required flow:**
+Local cart → Sync to Dr. Green Cart → Create Order → Success
 
-## Solution Options
+---
 
-### Option A: Scott Completes Registration (Recommended)
-1. Scott navigates to `/shop/register`
-2. Fills out medical questionnaire and shipping details
-3. System creates Dr. Green client via API
-4. KYC link is generated and shown
-5. Scott completes KYC verification
-6. Admin approves in Dr. Green portal
-7. Status syncs to "Verified"
+## Solution: Sync Cart Before Order
 
-### Option B: Manual Admin Intervention
-If Scott already has a Dr. Green profile under a **different email**:
-1. Find Scott's actual email in Dr. Green admin portal
-2. Either update Dr. Green profile email to `scott.k1@outlook.com`
-3. OR have Scott sign in with the matching email
+### Phase 1: Add Cart Sync Function
 
-## Implementation: Improve Clarity for Users
+**File: `src/hooks/useDrGreenApi.ts`**
 
-### 1. Dashboard Status Page Enhancement
-Show explicit messaging when no profile exists:
+Add a new `addToCart` function to expose the existing `add-to-cart` action:
 
 ```typescript
-// In DashboardStatus.tsx - add clearer messaging
-if (!hasClient) {
-  return (
-    <Alert variant="warning">
-      <AlertTitle>No Medical Profile Found</AlertTitle>
-      <AlertDescription>
-        We couldn't find a registered profile for your email address.
-        You need to complete registration to access the dispensary.
-      </AlertDescription>
-      <Button asChild>
-        <Link to="/shop/register">Complete Registration</Link>
-      </Button>
-    </Alert>
-  );
-}
+// Add item to Dr. Green cart
+const addToCart = async (cartData: {
+  cartId: string;
+  strainId: string;
+  quantity: number;
+}) => {
+  return callProxy<{
+    cartId: string;
+    items: Array<{ strainId: string; quantity: number }>;
+  }>('add-to-cart', { data: cartData });
+};
 ```
 
-### 2. Automatic Redirect for Unregistered Users
-When a user with no Dr. Green profile accesses `/dashboard/status`, automatically redirect to registration:
+Also add `emptyCart` function to clear the Dr. Green cart before syncing:
 
 ```typescript
-// Add useEffect to redirect unregistered users
-useEffect(() => {
-  if (!isLoading && !drGreenClient && isAuthenticated) {
-    // Give user time to see message, then redirect
-    const timer = setTimeout(() => {
-      navigate('/shop/register', { replace: true });
-    }, 3000);
-    return () => clearTimeout(timer);
+// Empty the Dr. Green cart
+const emptyCart = async (cartId: string) => {
+  return callProxy<{ success: boolean }>('empty-cart', { cartId });
+};
+```
+
+---
+
+### Phase 2: Update Checkout Flow
+
+**File: `src/pages/Checkout.tsx`**
+
+Modify `handlePlaceOrder` to sync cart items before creating the order:
+
+```text
+1. Get or create Dr. Green cart ID (use client ID as cart ID)
+2. Empty existing cart to ensure clean state
+3. Add each local cart item to Dr. Green cart
+4. Create order (without sending items - they're already in cart)
+5. Process payment as before
+```
+
+Updated flow in `handlePlaceOrder`:
+
+```typescript
+const handlePlaceOrder = async () => {
+  if (!drGreenClient || cart.length === 0) return;
+
+  setIsProcessing(true);
+  setPaymentStatus('Syncing cart...');
+
+  try {
+    const clientId = drGreenClient.drgreen_client_id;
+    
+    // Step 1: Empty existing Dr. Green cart to ensure clean state
+    await emptyCart(clientId);
+    
+    // Step 2: Add each item to Dr. Green cart
+    for (const item of cart) {
+      const result = await addToCart({
+        cartId: clientId,
+        strainId: item.strain_id,
+        quantity: item.quantity,
+      });
+      
+      if (result.error) {
+        throw new Error(`Failed to add ${item.strain_name} to cart: ${result.error}`);
+      }
+    }
+    
+    setPaymentStatus('Creating order...');
+    
+    // Step 3: Create order (items are now in Dr. Green cart)
+    const orderResult = await createOrder({
+      clientId: clientId,
+    });
+    
+    // ... rest of payment flow unchanged
+  } catch (error) {
+    // Error handling
   }
-}, [drGreenClient, isLoading, isAuthenticated, navigate]);
+};
 ```
 
-### 3. Improve Auto-Discovery Toast Messages
-Make it crystal clear what the user needs to do:
+---
 
-```typescript
-// In ShopContext.tsx linkClientFromDrGreenByAuthEmail
-toast({
-  title: 'No Profile Found',
-  description: 'No medical profile exists for your email. Please complete registration.',
-  action: <Button onClick={() => navigate('/shop/register')}>Register Now</Button>,
-});
+### Phase 3: Verify Cart API Actions Work
+
+The `drgreen-proxy` edge function already has the required actions:
+
+| Action | Endpoint | Purpose |
+|--------|----------|---------|
+| `add-to-cart` | `POST /dapp/carts` | Add item to cart |
+| `empty-cart` | `DELETE /dapp/carts/:cartId` | Clear cart |
+| `place-order` | `POST /dapp/orders` | Create order from cart |
+
+Note: The `create-order` action uses `drGreenRequest` (query signing) while `place-order` uses `drGreenRequestBody` (body signing). We may need to use `place-order` instead.
+
+---
+
+## Technical Details
+
+### API Flow Diagram
+
+```text
+┌─────────────────────────────────────────────────────────────┐
+│                      User Clicks "Place Order"              │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│ Step 1: Empty existing Dr. Green cart                       │
+│ DELETE /dapp/carts/{clientId}                               │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│ Step 2: For each local cart item, add to Dr. Green cart     │
+│ POST /dapp/carts { cartId, strainId, quantity }             │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│ Step 3: Create order from Dr. Green cart                    │
+│ POST /dapp/orders { clientId }                              │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│ Step 4: Create payment                                      │
+│ POST /dapp/payments { orderId, amount, currency, clientId } │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│ Step 5: Poll payment status or await webhook                │
+│ GET /dapp/payments/{paymentId}                              │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-## Files to Modify
+### Files to Modify
 
-1. **`src/pages/DashboardStatus.tsx`**
-   - Add explicit "No Profile" state with clear CTA
-   - Auto-redirect unregistered users to `/shop/register`
+| File | Changes |
+|------|---------|
+| `src/hooks/useDrGreenApi.ts` | Add `addToCart()` and `emptyCart()` functions |
+| `src/pages/Checkout.tsx` | Update `handlePlaceOrder` to sync cart before order |
 
-2. **`src/context/ShopContext.tsx`**
-   - Improve toast message clarity for missing profiles
-   - Add navigation action to registration
+### Edge Cases to Handle
 
-3. **`src/components/shop/EligibilityGate.tsx`** (if exists)
-   - Ensure consistent messaging for unregistered users
+1. **Cart sync failure**: If adding an item fails, abort and show error
+2. **Partial sync**: If some items sync but order fails, items remain in Dr. Green cart
+3. **Stock changes**: Stock may have changed between browsing and checkout
 
-## Expected Outcome After Fix
+---
 
-### Scott's Flow:
-1. Logs in → "No Profile Found" toast appears
-2. Sees dashboard with clear "Complete Registration" button
-3. Auto-redirects to `/shop/register` after 3 seconds
-4. Completes registration → Client created in Dr. Green
-5. KYC link shown → Completes verification
-6. Admin approves → Status syncs to VERIFIED
+## Expected Outcome
 
-### Kayliegh's Flow (Already Working):
-1. Logs in → "Profile Found! You are verified" toast
-2. Redirected directly to `/shop`
-3. Can browse and purchase
+After implementation:
+1. **Kayliegh** can complete checkout: Items sync to Dr. Green cart → Order created successfully
+2. **Scott** can complete checkout: Same flow works for all verified clients
+3. Error handling provides clear feedback if cart sync or order creation fails
 
-## Verification Test Plan
+---
 
-1. **Scott logs in**: Should see "No Profile Found" and redirect to registration
-2. **Scott registers**: Should create Dr. Green client, get KYC link
-3. **After KYC**: Manual refresh should show status update
-4. **Kayliegh logs in**: Should auto-redirect to shop (verified)
+## Test Plan
 
-## Technical Notes
-
-- The current auto-discovery is working correctly
-- The Dr. Green API lookup is functioning (finds Kayliegh)
-- Scott genuinely has no profile in Dr. Green under his email
-- No code bugs exist - this is a data/user-flow issue
+1. Login as Kayliegh (`kayliegh.sm@gmail.com` / `HB2024Test!`)
+2. Add a product to cart
+3. Proceed to checkout
+4. Click "Place Order"
+5. Verify order is created successfully (no 409 error)
+6. Check order appears in `/orders` page
+7. Repeat with Scott to confirm both users work
 
