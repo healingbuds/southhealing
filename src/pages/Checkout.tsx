@@ -49,7 +49,7 @@ const Checkout = () => {
   const navigate = useNavigate();
   const { t } = useTranslation('shop');
   const { toast } = useToast();
-  const { createPayment, getPayment, createOrder, getClientDetails, addToCart, placeOrder } = useDrGreenApi();
+  const { createPayment, getPayment, createOrder, getClientDetails } = useDrGreenApi();
   const { saveOrder } = useOrderTracking();
   const [isProcessing, setIsProcessing] = useState(false);
   const [orderComplete, setOrderComplete] = useState(false);
@@ -145,80 +145,53 @@ const Checkout = () => {
     }
 
     setIsProcessing(true);
-    setPaymentStatus('Syncing cart...');
+    setPaymentStatus('Creating order...');
 
     try {
       const clientId = drGreenClient.drgreen_client_id;
 
-      // Step 1: Sync cart items to Dr. Green server-side cart
-      // The Dr. Green API requires items in their cart before order creation
-      console.log('[Checkout] Syncing cart items to Dr. Green API...');
-      for (const item of cart) {
-        const addResult = await addToCart({
-          clientId: clientId,
-          strainId: item.strain_id,
-          quantity: item.quantity,
-        });
-        
-        if (addResult.error) {
-          console.warn(`[Checkout] Failed to add item ${item.strain_name} to server cart:`, addResult.error);
-          // Don't fail completely - the item might already be in cart or the API might accept direct order
-        } else {
-          console.log(`[Checkout] Added ${item.strain_name} (qty: ${item.quantity}) to Dr. Green cart`);
-        }
-      }
-
-      setPaymentStatus('Creating order...');
-
-      // Step 2: Try to place order from cart first (preferred method)
-      let orderResult: { data: { orderId: string; status?: string; totalAmount?: number } | null; error: string | null };
+      // Use the atomic createOrder which handles:
+      // 1. PATCH client shipping address
+      // 2. POST items to server-side cart
+      // 3. POST order creation from cart
+      // All in one server-side transaction
+      console.log('[Checkout] Creating order via atomic transaction...');
       
-      const cartOrderResult = await retryOperation(
-        () => placeOrder({ clientId }),
-        'Place order from cart'
+      const orderResult = await retryOperation(
+        () => createOrder({
+          clientId: clientId,
+          items: cart.map(item => ({
+            productId: item.strain_id,
+            quantity: item.quantity,
+            price: item.unit_price,
+          })),
+          shippingAddress: {
+            address1: shippingAddress.address1,
+            address2: shippingAddress.address2 || '',
+            city: shippingAddress.city,
+            state: shippingAddress.state || shippingAddress.city,
+            postalCode: shippingAddress.postalCode,
+            country: shippingAddress.country,
+            countryCode: shippingAddress.countryCode,
+          },
+        }),
+        'Create order'
       );
-
-      // If cart-based order fails, fall back to direct order creation
-      if (cartOrderResult.error || !cartOrderResult.data?.orderId) {
-        console.log('[Checkout] Cart-based order failed, trying direct creation...', cartOrderResult.error);
-        const directOrderResult = await retryOperation(
-          () => createOrder({
-            clientId: clientId,
-            items: cart.map(item => ({
-              productId: item.strain_id,
-              quantity: item.quantity,
-              price: item.unit_price,
-            })),
-            shippingAddress: {
-              street: shippingAddress.address1,
-              address2: shippingAddress.address2 || '',
-              city: shippingAddress.city,
-              state: shippingAddress.state || shippingAddress.city,
-              zipCode: shippingAddress.postalCode,
-              country: shippingAddress.country,
-              countryCode: shippingAddress.countryCode,
-            },
-          }),
-          'Create order directly'
-        );
-        orderResult = directOrderResult;
-      } else {
-        orderResult = cartOrderResult;
-      }
 
       if (orderResult.error || !orderResult.data?.orderId) {
         throw new Error(orderResult.error || 'Failed to create order');
       }
 
       const createdOrderId = orderResult.data.orderId;
+      console.log('[Checkout] Order created:', createdOrderId);
 
       setPaymentStatus('Initiating payment...');
 
-      // Step 4: Create payment via Dr Green API
+      // Create payment via Dr Green API
       const clientCountry = drGreenClient.country_code || countryCode || 'PT';
       const paymentResult = await retryOperation(
         () => createPayment({
-          orderId: createdOrderId!,
+          orderId: createdOrderId,
           amount: cartTotal,
           currency: getCurrencyForCountry(clientCountry),
           clientId: drGreenClient.drgreen_client_id,
@@ -233,7 +206,7 @@ const Checkout = () => {
       const paymentId = paymentResult.data.paymentId;
       setPaymentStatus('Processing payment...');
 
-      // Step 3: Poll for payment status (simplified - in production would use webhooks)
+      // Poll for payment status (simplified - in production would use webhooks)
       let attempts = 0;
       const maxAttempts = 10;
       let finalStatus = 'PENDING';
@@ -292,6 +265,9 @@ const Checkout = () => {
       } else if (errorMessage.includes('Client does not have any item in the cart')) {
         errorTitle = 'Cart Sync Error';
         userFriendlyMessage = 'There was an issue syncing your cart. Please try again or refresh the page.';
+      } else if (errorMessage.includes('shipping address')) {
+        errorTitle = 'Shipping Error';
+        userFriendlyMessage = 'There was an issue with your shipping address. Please verify and try again.';
       } else if (errorMessage.includes('KYC') || errorMessage.includes('kyc')) {
         errorTitle = 'Verification Required';
         userFriendlyMessage = 'Your identity verification is incomplete. Please complete the KYC process to continue.';
@@ -301,9 +277,6 @@ const Checkout = () => {
       } else if (errorMessage.includes('payment') || errorMessage.includes('Payment')) {
         errorTitle = 'Payment Error';
         userFriendlyMessage = 'There was an issue processing your payment. Please try again or use a different payment method.';
-      } else if (errorMessage.includes('Failed to add')) {
-        errorTitle = 'Cart Error';
-        userFriendlyMessage = errorMessage; // Already descriptive from cart sync
       } else if (errorMessage) {
         userFriendlyMessage = errorMessage;
       }
