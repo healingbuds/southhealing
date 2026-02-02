@@ -1,83 +1,85 @@
 
-# Plan: Add Staging Environment Support to drgreen-proxy
+# Plan: Add Railway Environment to drgreen-proxy
 
-## ✅ COMPLETED & VERIFIED
+## Objective
+Add a third `railway` environment to `drgreen-proxy` to match the configuration in `drgreen-comparison`, enabling switching between all three API environments.
 
-## Problem Summary
-The `drgreen-proxy` edge function previously only used production credentials. Staging credentials were configured but unused.
+## Current State
 
-## Solution Implemented
-Added environment switching capability following the pattern from `drgreen-comparison`.
+| Environment | Status in drgreen-proxy | Status in drgreen-comparison |
+|-------------|-------------------------|------------------------------|
+| production | ✅ Configured | ✅ Configured |
+| staging | ✅ Configured | ✅ Configured |
+| railway | ❌ Missing | ✅ Configured |
 
-## Verification Results
+## Changes Required
 
-| Environment | Endpoint | Status | Notes |
-|-------------|----------|--------|-------|
-| Production | GET /strains | ✅ 200 | Works correctly |
-| Production | GET /dapp/clients | ❌ 401 | API permission issue |
-| Staging | GET /strains | ✅ 200 | Works correctly |
-| Staging | GET /dapp/clients | ❌ 401 | Same API permission issue |
+### File: `supabase/functions/drgreen-proxy/index.ts`
 
-**Conclusion**: The implementation is correct. Both staging and production credentials work for public endpoints. The `/dapp/` endpoint 401 errors are due to API-level permissions at Dr. Green, not credential format issues.
+#### 1. Add Railway Environment to ENV_CONFIG (after line 364)
 
-## Changes Made
+Add the railway configuration matching `drgreen-comparison`:
 
-### 1. Environment Configuration (lines 341-365)
 ```typescript
-interface EnvConfig {
-  apiUrl: string;
-  apiKeyEnv: string;
-  privateKeyEnv: string;
-  name: string;
-}
-
 const ENV_CONFIG: Record<string, EnvConfig> = {
-  production: { ... },
-  staging: { ... },
+  production: {
+    apiUrl: 'https://api.drgreennft.com/api/v1',
+    apiKeyEnv: 'DRGREEN_API_KEY',
+    privateKeyEnv: 'DRGREEN_PRIVATE_KEY',
+    name: 'Production',
+  },
+  staging: {
+    apiUrl: getStagingApiUrl(),
+    apiKeyEnv: 'DRGREEN_STAGING_API_KEY',
+    privateKeyEnv: 'DRGREEN_STAGING_PRIVATE_KEY',
+    name: 'Staging (Official)',
+  },
+  railway: {
+    apiUrl: 'https://budstack-backend-main-development.up.railway.app/api/v1',
+    apiKeyEnv: 'DRGREEN_STAGING_API_KEY',
+    privateKeyEnv: 'DRGREEN_STAGING_PRIVATE_KEY',
+    name: 'Railway (Dev)',
+  },
 };
 ```
 
-### 2. Helper Functions
-- `getStagingApiUrl()` - Validates staging URL format
-- `getEnvironment()` - Selects environment based on request/env var
-- `getEnvCredentials()` - Retrieves credentials by environment
+#### 2. Update `test-staging` Action
 
-### 3. Updated Request Functions
-All functions now accept optional `envConfig` parameter:
-- `drGreenRequestBody(endpoint, method, body, logging, envConfig)`
-- `drGreenRequestGet(endpoint, queryParams, logging, envConfig)`
-- `drGreenRequestQuery(endpoint, queryParams, logging, envConfig)`
-- `drGreenRequest(endpoint, method, body, envConfig)`
+Modify the existing `test-staging` action to test all three environments and report connectivity status for each.
 
-### 4. New Actions
-- `test-staging` - Tests both environments and reports status
+## Configuration Details
 
-## Usage
+| Environment | API URL | API Key Source | Private Key Source |
+|-------------|---------|----------------|-------------------|
+| production | `https://api.drgreennft.com/api/v1` | `DRGREEN_API_KEY` | `DRGREEN_PRIVATE_KEY` |
+| staging | `https://stage-api.drgreennft.com/api/v1` | `DRGREEN_STAGING_API_KEY` | `DRGREEN_STAGING_PRIVATE_KEY` |
+| railway | `https://budstack-backend-main-development.up.railway.app/api/v1` | `DRGREEN_STAGING_API_KEY` | `DRGREEN_STAGING_PRIVATE_KEY` |
 
-### Explicit environment in request:
+**Note**: Railway uses the same credentials as staging (both are development environments).
+
+## Usage After Implementation
+
+### Switch environment per request:
 ```json
-{
-  "action": "get-strains",
-  "countryCode": "ZAF",
-  "env": "staging"
-}
+{"action": "get-strains", "countryCode": "ZAF", "env": "production"}
+{"action": "get-strains", "countryCode": "ZAF", "env": "staging"}
+{"action": "get-strains", "countryCode": "ZAF", "env": "railway"}
 ```
 
-### Global override:
-Set `DRGREEN_USE_STAGING=true` environment variable.
+### Test all environments:
+```json
+{"action": "test-staging"}
+```
 
-## Secrets Status
+## Testing Plan
+1. Deploy updated edge function
+2. Run `test-staging` action to verify all three environments
+3. Test `get-strains` with each `env` value
+4. Verify `/dapp/clients` endpoints on Railway (may have different permissions)
 
-| Secret | Configured | Format Valid |
-|--------|------------|--------------|
-| `DRGREEN_API_KEY` | ✅ | ✅ Base64 PEM (232 chars) |
-| `DRGREEN_PRIVATE_KEY` | ✅ | ✅ Base64 PEM |
-| `DRGREEN_STAGING_API_KEY` | ✅ | ✅ Base64 PEM (232 chars) |
-| `DRGREEN_STAGING_PRIVATE_KEY` | ✅ | ✅ Base64 PEM |
-| `DRGREEN_STAGING_API_URL` | ⚠️ | Invalid (not a URL) - fallback used |
+## File to Modify
 
-## Next Steps
-
-To enable `/dapp/` endpoints, the Dr. Green API credentials need elevated permissions. This requires:
-1. Generating new API keys from the Dr. Green dApp portal with dApp admin permissions
-2. Or contacting Dr. Green support to enable `/dapp/` access for the current keys
+| File | Changes |
+|------|---------|
+| `supabase/functions/drgreen-proxy/index.ts` | Add railway to ENV_CONFIG, update test-staging action |
+| `.lovable/plan.md` | Update documentation with three-environment support |
