@@ -328,7 +328,75 @@ async function verifyClientOwnership(
   return data.user_id === userId;
 }
 
-// Use production API
+// ============================================================
+// ENVIRONMENT CONFIGURATION - Supports production and staging
+// ============================================================
+interface EnvConfig {
+  apiUrl: string;
+  apiKeyEnv: string;
+  privateKeyEnv: string;
+  name: string;
+}
+
+// Helper to get staging URL - validates it's actually a URL
+function getStagingApiUrl(): string {
+  const envUrl = Deno.env.get('DRGREEN_STAGING_API_URL');
+  // Only use env URL if it looks like a valid URL
+  if (envUrl && (envUrl.startsWith('http://') || envUrl.startsWith('https://'))) {
+    return envUrl;
+  }
+  // Default staging URL
+  return 'https://stage-api.drgreennft.com/api/v1';
+}
+
+const ENV_CONFIG: Record<string, EnvConfig> = {
+  production: {
+    apiUrl: 'https://api.drgreennft.com/api/v1',
+    apiKeyEnv: 'DRGREEN_API_KEY',
+    privateKeyEnv: 'DRGREEN_PRIVATE_KEY',
+    name: 'Production',
+  },
+  staging: {
+    apiUrl: getStagingApiUrl(),
+    apiKeyEnv: 'DRGREEN_STAGING_API_KEY',
+    privateKeyEnv: 'DRGREEN_STAGING_PRIVATE_KEY',
+    name: 'Staging',
+  },
+};
+
+/**
+ * Get environment configuration based on request or global setting
+ * Priority: 1) Explicit env param 2) DRGREEN_USE_STAGING env var 3) production default
+ */
+function getEnvironment(requestedEnv?: string): EnvConfig {
+  // If explicit environment requested, use it
+  if (requestedEnv && ENV_CONFIG[requestedEnv]) {
+    logInfo(`Using environment: ${requestedEnv} (explicit)`);
+    return ENV_CONFIG[requestedEnv];
+  }
+  
+  // Check global staging override
+  const useStaging = Deno.env.get('DRGREEN_USE_STAGING') === 'true';
+  if (useStaging) {
+    logInfo('Using environment: staging (DRGREEN_USE_STAGING=true)');
+    return ENV_CONFIG.staging;
+  }
+  
+  // Default to production
+  return ENV_CONFIG.production;
+}
+
+/**
+ * Get credentials for a specific environment
+ */
+function getEnvCredentials(envConfig: EnvConfig): { apiKey: string | undefined; privateKey: string | undefined } {
+  return {
+    apiKey: Deno.env.get(envConfig.apiKeyEnv),
+    privateKey: Deno.env.get(envConfig.privateKeyEnv),
+  };
+}
+
+// Default API URL (for backwards compatibility with existing code)
 const DRGREEN_API_URL = "https://api.drgreennft.com/api/v1";
 
 // API timeout in milliseconds (20 seconds)
@@ -884,36 +952,48 @@ async function withRetry<T>(
  * Make authenticated request to Dr Green API with body signing (Method A)
  * Used for: POST, DELETE, and singular GET endpoints
  * Includes automatic retry with exponential backoff for transient failures
+ * 
+ * @param endpoint - API endpoint path
+ * @param method - HTTP method
+ * @param body - Request body object
+ * @param enableDetailedLogging - Enable verbose logging
+ * @param envConfig - Optional environment config (defaults to production)
  */
 async function drGreenRequestBody(
   endpoint: string,
   method: string,
   body?: object,
-  enableDetailedLogging = false
+  enableDetailedLogging = false,
+  envConfig?: EnvConfig
 ): Promise<Response> {
-  const apiKey = Deno.env.get("DRGREEN_API_KEY");
-  const secretKey = Deno.env.get("DRGREEN_PRIVATE_KEY");
+  // Use provided env or default to production
+  const env = envConfig || ENV_CONFIG.production;
+  const { apiKey, privateKey: secretKey } = getEnvCredentials(env);
   
   // Enhanced credential diagnostics when enabled
   if (enableDetailedLogging) {
     console.log("[API-DEBUG] ========== BODY REQUEST PREPARATION ==========");
+    console.log("[API-DEBUG] Environment:", env.name);
+    console.log("[API-DEBUG] API URL:", env.apiUrl);
     console.log("[API-DEBUG] Endpoint:", endpoint);
     console.log("[API-DEBUG] Method:", method);
+    console.log("[API-DEBUG] API Key env var:", env.apiKeyEnv);
     console.log("[API-DEBUG] API Key present:", !!apiKey);
     console.log("[API-DEBUG] API Key length:", apiKey?.length || 0);
     console.log("[API-DEBUG] API Key prefix:", apiKey ? apiKey.slice(0, 8) + "..." : "N/A");
     console.log("[API-DEBUG] API Key is Base64:", apiKey ? /^[A-Za-z0-9+/=]+$/.test(apiKey) : false);
+    console.log("[API-DEBUG] Private Key env var:", env.privateKeyEnv);
     console.log("[API-DEBUG] Private Key present:", !!secretKey);
     console.log("[API-DEBUG] Private Key length:", secretKey?.length || 0);
   }
   
   if (!apiKey || !secretKey) {
-    throw new Error("Dr Green API credentials not configured");
+    throw new Error(`Dr Green API credentials not configured for ${env.name} (${env.apiKeyEnv}, ${env.privateKeyEnv})`);
   }
   
   // Validate API key format - should be Base64-encoded, not raw PEM
   if (apiKey.startsWith('-----BEGIN')) {
-    console.error('[API-ERROR] DRGREEN_API_KEY contains raw PEM format. It should be Base64-encoded.');
+    console.error(`[API-ERROR] ${env.apiKeyEnv} contains raw PEM format. It should be Base64-encoded.`);
     throw new Error('API key misconfigured - contact administrator');
   }
   
@@ -954,8 +1034,8 @@ async function drGreenRequestBody(
     });
   }
   
-  const url = `${DRGREEN_API_URL}${endpoint}`;
-  logInfo(`API request: ${method} ${endpoint}`);
+  const url = `${env.apiUrl}${endpoint}`;
+  logInfo(`API request: ${method} ${endpoint}`, { environment: env.name });
   
   // Wrap the fetch in retry logic
   return withRetry(
@@ -978,6 +1058,7 @@ async function drGreenRequestBody(
           const clonedResp = response.clone();
           const errorBody = await clonedResp.text();
           console.log("[API-DEBUG] ========== 401 UNAUTHORIZED ANALYSIS ==========");
+          console.log("[API-DEBUG] Environment:", env.name);
           console.log("[API-DEBUG] Response status:", response.status);
           console.log("[API-DEBUG] Response headers:", JSON.stringify(Object.fromEntries(response.headers.entries())));
           console.log("[API-DEBUG] Error body:", errorBody);
@@ -1010,28 +1091,39 @@ async function drGreenRequestBody(
  * 
  * Used for: All GET endpoints (both singular resource and list endpoints)
  * Includes automatic retry with exponential backoff for transient failures
+ * 
+ * @param endpoint - API endpoint path
+ * @param queryParams - Query string parameters
+ * @param enableDetailedLogging - Enable verbose logging
+ * @param envConfig - Optional environment config (defaults to production)
  */
 async function drGreenRequestGet(
   endpoint: string,
   queryParams: Record<string, string | number> = {},
-  enableDetailedLogging = false
+  enableDetailedLogging = false,
+  envConfig?: EnvConfig
 ): Promise<Response> {
-  const apiKey = Deno.env.get("DRGREEN_API_KEY");
-  const secretKey = Deno.env.get("DRGREEN_PRIVATE_KEY");
+  // Use provided env or default to production
+  const env = envConfig || ENV_CONFIG.production;
+  const { apiKey, privateKey: secretKey } = getEnvCredentials(env);
   
   if (enableDetailedLogging) {
     console.log("[API-DEBUG] ========== GET REQUEST (EMPTY OBJECT SIGNING) ==========");
+    console.log("[API-DEBUG] Environment:", env.name);
+    console.log("[API-DEBUG] API URL:", env.apiUrl);
     console.log("[API-DEBUG] Endpoint:", endpoint);
     console.log("[API-DEBUG] Query params:", JSON.stringify(queryParams));
+    console.log("[API-DEBUG] API Key env var:", env.apiKeyEnv);
+    console.log("[API-DEBUG] Private Key env var:", env.privateKeyEnv);
   }
   
   if (!apiKey || !secretKey) {
-    throw new Error("Dr Green API credentials not configured");
+    throw new Error(`Dr Green API credentials not configured for ${env.name} (${env.apiKeyEnv}, ${env.privateKeyEnv})`);
   }
   
   // Validate API key format - should be Base64-encoded, not raw PEM
   if (apiKey.startsWith('-----BEGIN')) {
-    console.error('[API-ERROR] DRGREEN_API_KEY contains raw PEM format. It should be Base64-encoded.');
+    console.error(`[API-ERROR] ${env.apiKeyEnv} contains raw PEM format. It should be Base64-encoded.`);
     throw new Error('API key misconfigured - contact administrator');
   }
   
@@ -1076,10 +1168,10 @@ async function drGreenRequestGet(
   };
   
   const url = queryString 
-    ? `${DRGREEN_API_URL}${endpoint}?${queryString}`
-    : `${DRGREEN_API_URL}${endpoint}`;
+    ? `${env.apiUrl}${endpoint}?${queryString}`
+    : `${env.apiUrl}${endpoint}`;
     
-  logInfo(`API request: GET ${endpoint}`, { hasQueryParams: !!queryString });
+  logInfo(`API request: GET ${endpoint}`, { environment: env.name, hasQueryParams: !!queryString });
   
   // Wrap the fetch in retry logic
   return withRetry(
@@ -1098,6 +1190,7 @@ async function drGreenRequestGet(
         
         if (response.status === 401 && enableDetailedLogging) {
           console.log("[API-DEBUG] ========== GET 401 ANALYSIS ==========");
+          console.log("[API-DEBUG] Environment:", env.name);
           console.log("[API-DEBUG] Status:", response.status);
           const errorBody = await response.clone().text();
           console.log("[API-DEBUG] Error body:", errorBody);
@@ -1125,10 +1218,11 @@ async function drGreenRequestGet(
 async function drGreenRequestQuery(
   endpoint: string,
   queryParams: Record<string, string | number>,
-  enableDetailedLogging = false
+  enableDetailedLogging = false,
+  envConfig?: EnvConfig
 ): Promise<Response> {
   // Redirect to new implementation that signs empty object correctly
-  return drGreenRequestGet(endpoint, queryParams, enableDetailedLogging);
+  return drGreenRequestGet(endpoint, queryParams, enableDetailedLogging, envConfig);
 }
 
 /**
@@ -1138,9 +1232,10 @@ async function drGreenRequestQuery(
 async function drGreenRequest(
   endpoint: string,
   method: string,
-  body?: object
+  body?: object,
+  envConfig?: EnvConfig
 ): Promise<Response> {
-  return drGreenRequestBody(endpoint, method, body);
+  return drGreenRequestBody(endpoint, method, body, false, envConfig);
 }
 
 serve(async (req) => {
@@ -1247,6 +1342,131 @@ serve(async (req) => {
       }
       
       return new Response(JSON.stringify(healthResult, null, 2), { 
+        status: 200, 
+        headers: { ...corsHeaders, "Content-Type": "application/json" } 
+      });
+    }
+    
+    // Test staging environment - verify staging credentials work
+    if (action === 'test-staging') {
+      console.log("[drgreen-proxy] Testing staging environment credentials...");
+      
+      const stagingEnv = ENV_CONFIG.staging;
+      const { apiKey: stagingApiKey, privateKey: stagingPrivateKey } = getEnvCredentials(stagingEnv);
+      const prodEnv = ENV_CONFIG.production;
+      const { apiKey: prodApiKey, privateKey: prodPrivateKey } = getEnvCredentials(prodEnv);
+      
+      const result: Record<string, unknown> = {
+        timestamp: new Date().toISOString(),
+        action: 'test-staging',
+        environments: {
+          production: {
+            name: prodEnv.name,
+            apiUrl: prodEnv.apiUrl,
+            apiKeyConfigured: !!prodApiKey,
+            privateKeyConfigured: !!prodPrivateKey,
+            apiKeyLength: prodApiKey?.length || 0,
+            apiKeyPrefix: prodApiKey ? prodApiKey.slice(0, 8) + '...' : 'N/A',
+          },
+          staging: {
+            name: stagingEnv.name,
+            apiUrl: stagingEnv.apiUrl,
+            apiKeyConfigured: !!stagingApiKey,
+            privateKeyConfigured: !!stagingPrivateKey,
+            apiKeyLength: stagingApiKey?.length || 0,
+            apiKeyPrefix: stagingApiKey ? stagingApiKey.slice(0, 8) + '...' : 'N/A',
+          },
+        },
+        tests: [] as Record<string, unknown>[],
+      };
+      
+      // Test staging environment if credentials exist
+      if (stagingApiKey && stagingPrivateKey) {
+        try {
+          console.log("[drgreen-proxy] Testing staging GET /strains...");
+          const stagingResponse = await drGreenRequestGet("/strains", { take: 1, countryCode: 'ZAF' }, true, stagingEnv);
+          const stagingBody = await stagingResponse.clone().text();
+          
+          (result.tests as Record<string, unknown>[]).push({
+            environment: 'staging',
+            endpoint: 'GET /strains',
+            status: stagingResponse.status,
+            success: stagingResponse.ok,
+            responsePreview: stagingBody.slice(0, 300),
+          });
+          
+          // If strains work, try clients summary
+          if (stagingResponse.ok) {
+            try {
+              console.log("[drgreen-proxy] Testing staging GET /dapp/clients/summary...");
+              const clientsResponse = await drGreenRequestGet("/dapp/clients/summary", {}, true, stagingEnv);
+              const clientsBody = await clientsResponse.clone().text();
+              
+              (result.tests as Record<string, unknown>[]).push({
+                environment: 'staging',
+                endpoint: 'GET /dapp/clients/summary',
+                status: clientsResponse.status,
+                success: clientsResponse.ok,
+                responsePreview: clientsBody.slice(0, 300),
+              });
+            } catch (e) {
+              (result.tests as Record<string, unknown>[]).push({
+                environment: 'staging',
+                endpoint: 'GET /dapp/clients/summary',
+                error: e instanceof Error ? e.message : String(e),
+                success: false,
+              });
+            }
+          }
+        } catch (e) {
+          (result.tests as Record<string, unknown>[]).push({
+            environment: 'staging',
+            endpoint: 'GET /strains',
+            error: e instanceof Error ? e.message : String(e),
+            success: false,
+          });
+        }
+      } else {
+        result.stagingError = 'Staging credentials not configured';
+      }
+      
+      // Also test production for comparison
+      if (prodApiKey && prodPrivateKey) {
+        try {
+          console.log("[drgreen-proxy] Testing production GET /strains for comparison...");
+          const prodResponse = await drGreenRequestGet("/strains", { take: 1, countryCode: 'ZAF' }, false, prodEnv);
+          
+          (result.tests as Record<string, unknown>[]).push({
+            environment: 'production',
+            endpoint: 'GET /strains',
+            status: prodResponse.status,
+            success: prodResponse.ok,
+          });
+        } catch (e) {
+          (result.tests as Record<string, unknown>[]).push({
+            environment: 'production',
+            endpoint: 'GET /strains',
+            error: e instanceof Error ? e.message : String(e),
+            success: false,
+          });
+        }
+      }
+      
+      // Summary
+      const stagingTests = (result.tests as Record<string, unknown>[]).filter(t => t.environment === 'staging');
+      const prodTests = (result.tests as Record<string, unknown>[]).filter(t => t.environment === 'production');
+      
+      result.summary = {
+        stagingWorking: stagingTests.some(t => t.success === true),
+        productionWorking: prodTests.some(t => t.success === true),
+        recommendation: stagingTests.some(t => t.success === true) 
+          ? 'Staging credentials work! You can use env: "staging" in requests.'
+          : stagingApiKey 
+            ? 'Staging credentials configured but API calls failing. Check credentials.'
+            : 'No staging credentials configured. Add DRGREEN_STAGING_API_KEY and DRGREEN_STAGING_PRIVATE_KEY.',
+      };
+      
+      return new Response(JSON.stringify(result, null, 2), { 
         status: 200, 
         headers: { ...corsHeaders, "Content-Type": "application/json" } 
       });
