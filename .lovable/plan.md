@@ -1,29 +1,25 @@
 
-# Plan: Fix Quick Login Admin Credentials
 
-## Issue Identified
-The quick login dropdown has incorrect admin credentials. The actual admin account in the database is:
+## Goal
+Update the Quick Login dropdown to use the correct admin password `H34l1ng@buds2025!`
+
+## What just happened
+The admin user password was successfully reset via the backend function:
 - **Email**: `admin@healingbuds.test`
-- **User ID**: `6fc36e5c-92c5-43d4-a162-3d6385190590`
-- **Role**: `admin`
+- **Password**: `H34l1ng@buds2025!`
+- **Email Verified**: ✅ Yes
 
-The dropdown currently tries to use `scott@healingbuds.global` which doesn't exist in the auth system.
+## Change Required
 
-## Fix Required
+### File: `src/pages/Auth.tsx` (Line 320)
 
-### File: `src/pages/Auth.tsx`
-
-Update line 319 to use the correct admin email:
-
-| Current (Wrong) | Correct |
-|-----------------|---------|
-| `scott@healingbuds.global` | `admin@healingbuds.test` |
+Update the password from `Healing2025!` to `H34l1ng@buds2025!`:
 
 ```typescript
 <DropdownMenuItem
   onClick={() => {
-    setEmail("admin@healingbuds.test");  // Changed from scott@healingbuds.global
-    setPassword("Healing2025!");
+    setEmail("admin@healingbuds.test");
+    setPassword("H34l1ng@buds2025!");  // Updated password
   }}
   className="cursor-pointer"
 >
@@ -32,12 +28,9 @@ Update line 319 to use the correct admin email:
 </DropdownMenuItem>
 ```
 
-## Available Accounts Summary
-
-| Email | Role | Status |
-|-------|------|--------|
-| `admin@healingbuds.test` | Admin | ✅ Confirmed |
-| `scott.k1@outlook.com` | Patient | ✅ Confirmed |
-
 ## Testing
-After this change, clicking "Quick Login (Dev)" → "Admin (Test)" should successfully log in and redirect to `/admin`.
+After this change:
+1. Click **Quick Login (Dev)** → **Admin (Test)**
+2. Click **Sign In**
+3. Should redirect to `/admin` successfully
+
