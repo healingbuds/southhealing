@@ -57,28 +57,42 @@ export function useClientResync() {
       const firstName = nameParts[0] || 'Patient';
       const lastName = nameParts.slice(1).join(' ') || 'User';
 
-      // Prepare the client creation payload
+      // Convert 2-letter country code to 3-letter ISO for API
+      const countryCodeMap: Record<string, string> = {
+        'ZA': 'ZAF', 'PT': 'PRT', 'GB': 'GBR', 'US': 'USA', 
+        'TH': 'THA', 'DE': 'DEU', 'FR': 'FRA', 'ES': 'ESP'
+      };
+      const alpha2Code = existingClientData.countryCode || 'PT';
+      const alpha3Code = countryCodeMap[alpha2Code] || alpha2Code;
+
+      // Prepare the client creation payload - using 'payload' key as expected by proxy
       const clientPayload = {
         action: 'create-client-legacy',
-        data: {
+        payload: {
           firstName,
           lastName,
           email: existingClientData.email,
-          phoneCode: '+1', // Default, will be updated
-          phoneCountryCode: existingClientData.countryCode || 'US',
-          contactNumber: '0000000000', // Placeholder
+          phoneCode: '+1',
+          phoneCountryCode: alpha2Code,
+          contactNumber: '0000000000',
           shipping: existingClientData.shippingAddress ? {
-            address1: existingClientData.shippingAddress.address1 || '',
+            address1: existingClientData.shippingAddress.address1 || 'Address pending',
             address2: existingClientData.shippingAddress.address2 || '',
-            city: existingClientData.shippingAddress.city || '',
-            state: existingClientData.shippingAddress.state || existingClientData.shippingAddress.city || '',
-            country: existingClientData.shippingAddress.country || '',
-            countryCode: existingClientData.countryCode || 'PT',
-            postalCode: existingClientData.shippingAddress.postalCode || '',
-          } : undefined,
-          // Minimal medical record (will be completed via KYC)
+            city: existingClientData.shippingAddress.city || 'City pending',
+            state: existingClientData.shippingAddress.state || existingClientData.shippingAddress.city || 'State pending',
+            country: existingClientData.shippingAddress.country || 'Portugal',
+            countryCode: alpha3Code,
+            postalCode: existingClientData.shippingAddress.postalCode || '0000',
+          } : {
+            address1: 'Address pending',
+            city: 'City pending',
+            state: 'State pending',
+            country: 'Portugal',
+            countryCode: alpha3Code,
+            postalCode: '0000',
+          },
           medicalRecord: {
-            dob: '1990-01-01', // Placeholder
+            dob: '1990-01-01',
             gender: 'prefer_not_to_say',
             medicalConditions: ['other_medical_condition'],
             medicalHistory0: false,
