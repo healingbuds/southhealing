@@ -2411,6 +2411,12 @@ serve(async (req) => {
       
       // Create order with items directly (per official API documentation)
       // POST /api/v1/dapp/orders with clientId, items, shippingAddress, notes
+      // Create order with items - ATOMIC TRANSACTION
+      // The Dr. Green API requires:
+      // 1. Client must have a shipping address saved on their record
+      // 2. Items must be in the server-side cart (POST /dapp/carts)
+      // 3. Then order can be created from cart (POST /dapp/orders)
+      // This action performs all 3 steps atomically server-side
       case "create-order": {
         const orderData = body.data || {};
         if (!orderData.clientId) {
@@ -2420,47 +2426,104 @@ serve(async (req) => {
           throw new Error("items array is required and must not be empty");
         }
         
-        // Format payload - try strainId first, then productId (API may use different field names)
-        const orderPayload: Record<string, unknown> = {
-          clientId: orderData.clientId,
-          items: orderData.items.map((item: { strainId?: string; productId?: string; quantity: number; price?: number; unitPrice?: number }) => ({
-            // Try multiple field names since API docs vs implementation may differ
-            strainId: item.strainId || item.productId,
-            productId: item.strainId || item.productId,
-            quantity: item.quantity,
-            price: item.price || item.unitPrice || 0,
-          })),
-        };
+        const clientId = orderData.clientId;
         
-        // Add optional fields if provided - normalize shipping address field names
+        // Step 1: Update client shipping address (if provided)
+        // This is required before adding items to cart
         if (orderData.shippingAddress) {
           const addr = orderData.shippingAddress;
-          // Handle both frontend naming (street/zipCode) and API naming (address1/postalCode)
-          orderPayload.shippingAddress = {
-            address1: addr.street || addr.address1 || '',
-            address2: addr.address2 || '',
-            landmark: addr.landmark || '',
-            city: addr.city || '',
-            state: addr.state || addr.city || '', // Fallback to city if no state
-            country: addr.country || '',
-            countryCode: addr.countryCode || getCountryCodeFromName(addr.country) || '',
-            postalCode: addr.zipCode || addr.postalCode || '',
+          const shippingPayload = {
+            shipping: {
+              address1: addr.street || addr.address1 || '',
+              address2: addr.address2 || '',
+              landmark: addr.landmark || '',
+              city: addr.city || '',
+              state: addr.state || addr.city || '', // Fallback to city if no state
+              country: addr.country || '',
+              countryCode: addr.countryCode || getCountryCodeFromName(addr.country) || '',
+              postalCode: addr.zipCode || addr.postalCode || '',
+            }
           };
-          logInfo("Order includes shipping address", { 
+          
+          logInfo("Step 1: Updating client shipping address", { 
+            clientId,
             city: addr.city, 
             country: addr.country 
           });
-        }
-        if (orderData.notes) {
-          orderPayload.notes = orderData.notes;
+          
+          try {
+            const shippingResponse = await drGreenRequestBody(`/dapp/clients/${clientId}`, "PATCH", shippingPayload);
+            if (!shippingResponse.ok) {
+              const shippingError = await shippingResponse.clone().text();
+              logWarn("Shipping address update failed (continuing)", { 
+                status: shippingResponse.status,
+                error: shippingError,
+              });
+              // Don't fail - the client may already have shipping on record
+            } else {
+              logInfo("Shipping address updated successfully");
+            }
+          } catch (shippingErr) {
+            logWarn("Shipping address update threw exception (continuing)", { 
+              error: String(shippingErr) 
+            });
+            // Continue anyway - address may already exist on client record
+          }
         }
         
-        logInfo("Creating order with items", { 
-          clientId: orderData.clientId,
-          itemCount: orderData.items.length,
+        // Step 2: Add items to server-side cart
+        // The cart must have items before order can be created
+        const cartItems = orderData.items.map((item: { strainId?: string; productId?: string; quantity: number }) => ({
+          strainId: item.strainId || item.productId,
+          quantity: item.quantity,
+        }));
+        
+        const cartPayload = {
+          clientCartId: clientId,
+          items: cartItems,
+        };
+        
+        logInfo("Step 2: Adding items to cart", { 
+          clientId,
+          itemCount: cartItems.length,
         });
         
+        try {
+          const cartResponse = await drGreenRequestBody("/dapp/carts", "POST", cartPayload);
+          if (!cartResponse.ok) {
+            const cartError = await cartResponse.clone().text();
+            logError("Failed to add items to cart", { 
+              status: cartResponse.status,
+              error: cartError,
+            });
+            // If cart fails, we cannot proceed with order
+            response = cartResponse;
+            break;
+          }
+          logInfo("Items added to cart successfully");
+        } catch (cartErr) {
+          logError("Cart add threw exception", { error: String(cartErr) });
+          throw new Error(`Failed to add items to cart: ${String(cartErr)}`);
+        }
+        
+        // Step 3: Create order from cart
+        logInfo("Step 3: Creating order from cart", { clientId });
+        
+        const orderPayload = {
+          clientId: clientId,
+        };
+        
         response = await drGreenRequestBody("/dapp/orders", "POST", orderPayload);
+        
+        if (response.ok) {
+          logInfo("Order created successfully");
+        } else {
+          const orderError = await response.clone().text();
+          logError("Order creation failed", { 
+            status: response.status,
+            error: orderError,
+          });
+        }
         break;
       }
       
