@@ -2471,9 +2471,19 @@ serve(async (req) => {
                 });
                 shippingVerified = true;
               } else {
-                logWarn("Shipping address not in PATCH response, checking if already saved");
+                // Enhanced diagnostic logging for credential scope issues
+                logWarn("Shipping address NOT persisted - likely credential scope issue", {
+                  responseStatus: shippingResponse.status,
+                  responseHasData: !!responseData?.data,
+                  responseKeys: Object.keys(responseData?.data || {}),
+                  clientId: clientId,
+                  shippingVerified: false,
+                });
+                // Log full response for debugging (temporarily for diagnostics)
+                console.log("[DIAGNOSTIC] Full PATCH response:", JSON.stringify(responseData, null, 2));
+                console.log("[DIAGNOSTIC] Sent shipping payload:", JSON.stringify(shippingPayload, null, 2));
               }
-              logInfo("Shipping address update successful");
+              logInfo("Shipping address update HTTP 200 received");
             }
           } catch (shippingErr) {
             logWarn("Shipping address update threw exception", { 
