@@ -626,8 +626,146 @@ curl -X POST https://your-project.supabase.co/functions/v1/drgreen-proxy \
 
 ---
 
+## NFT-Scoped Access Control (Critical)
+
+The Dr. Green API enforces **strict NFT-scoped access control**. This means:
+
+### How It Works
+
+1. Each API key pair (public key + private key) is associated with a specific **NFT** and **dApp identity**
+2. When a client is created via `POST /dapp/clients`, that client record is **bound** to the NFT/API key that created it
+3. Only the same API key can perform operations on that client (PATCH, carts, orders)
+
+### Current Credentials
+
+| Property | Value |
+|----------|-------|
+| dApp Name | `healingbudscoza` |
+| NFT Owner | `0x0b60d85fefcd9064a29f7df0f8cbc7901b9e6c84` |
+
+### Common 401 Errors
+
+If you see `401 Unauthorized` when trying to:
+- PATCH a client's shipping address
+- POST items to a client's cart
+- POST an order for a client
+
+This usually means the client was created under **different API credentials** (different NFT scope).
+
+### Solutions
+
+#### Option A: Re-Register Client (Recommended)
+
+If a client was created under different credentials:
+1. Create a new client record via `POST /dapp/clients` with current credentials
+2. Store the new `drgreen_client_id` in local database
+3. User completes KYC verification again via the new `kycLink`
+
+This is available in the Patient Dashboard under **Quick Actions → Re-Sync Account**.
+
+#### Option B: Admin Credentials
+
+If you have admin-level API credentials from Dr. Green:
+1. Add `DRGREEN_ADMIN_API_KEY` and `DRGREEN_ADMIN_PRIVATE_KEY` secrets
+2. Use admin credentials for order operations (bypasses NFT scoping)
+
+#### Option C: Mock Mode (Testing Only)
+
+For development and testing:
+1. Add `DRGREEN_MOCK_MODE=true` to Edge Function secrets
+2. Order creation will return simulated success
+3. No actual order is created in Dr. Green
+
+---
+
+## Mock Mode
+
+When `DRGREEN_MOCK_MODE` environment variable is set to `true`, the `create-order` action will:
+
+1. Skip all Dr. Green API calls
+2. Return a simulated successful response with a mock order ID
+3. Include a `mockMode: true` flag in the response
+
+### Enabling Mock Mode
+
+Add the secret via Lovable Cloud:
+- **Name**: `DRGREEN_MOCK_MODE`
+- **Value**: `true`
+
+### Mock Response Example
+
+```json
+{
+  "success": true,
+  "orderId": "mock_ord_abc123_xyz",
+  "message": "[MOCK MODE] Order simulated successfully",
+  "mockMode": true,
+  "requestId": "ord_abc123_xyz",
+  "items": [...],
+  "status": "PENDING"
+}
+```
+
+---
+
+## Key Rotation / Credential Migration
+
+If API credentials change:
+
+### 1. Existing Clients Become Inaccessible
+
+Clients created under old credentials cannot be modified with new credentials.
+
+### 2. Migration Steps
+
+1. **Identify affected users**: Query `drgreen_clients` table for users who cannot place orders
+2. **Prompt re-registration**: Show "Re-Sync Account" option in dashboard
+3. **Create new client records**: Use new credentials to create fresh client records
+4. **Update local database**: Replace old `drgreen_client_id` with new one
+5. **User completes KYC**: New verification required for each re-registered user
+
+### 3. Preventing Issues
+
+- Keep API credentials consistent across environments
+- Document which NFT/credentials are used for production
+- Test with a dedicated test account before real user registration
+
+---
+
+## Troubleshooting
+
+### Order Creation Fails with 401
+
+**Cause**: Client record created under different NFT/API credentials
+
+**Solution**: 
+1. Check `DRGREEN_MOCK_MODE` is not enabled (unless testing)
+2. Have user click "Re-Sync Account" in Patient Dashboard
+3. User completes KYC again with new client record
+
+### Signature Verification Fails
+
+**Cause**: Private key format mismatch or corruption
+
+**Solution**:
+1. Verify `DRGREEN_PRIVATE_KEY` is valid PKCS#8 secp256k1 format
+2. Check for whitespace or encoding issues
+3. Regenerate keys from Dr. Green DApp if needed
+
+### Client Not Found
+
+**Cause**: `drgreen_client_id` doesn't exist in Dr. Green system
+
+**Solution**:
+1. Verify client was created successfully
+2. Check if client was deleted in Dr. Green admin
+3. Re-register client if needed
+
+---
+
 ## Version History
 
 | Version | Date | Changes |
 |---------|------|---------|
 | 1.0.0 | 2026-01-30 | Initial documentation |
+| 1.1.0 | 2026-02-02 | Added NFT-scoped access control, mock mode, troubleshooting |

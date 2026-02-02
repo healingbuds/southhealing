@@ -12,7 +12,8 @@ import {
   ArrowRight,
   ExternalLink,
   MapPin,
-  Pencil
+  Pencil,
+  RefreshCw
 } from 'lucide-react';
 import PrescriptionManager from '@/components/dashboard/PrescriptionManager';
 import DosageTracker from '@/components/dashboard/DosageTracker';
@@ -36,6 +37,7 @@ import { ShippingAddressForm, type ShippingAddress } from '@/components/shop/Shi
 import { useShop } from '@/context/ShopContext';
 import { useOrderTracking } from '@/hooks/useOrderTracking';
 import { useDrGreenApi } from '@/hooks/useDrGreenApi';
+import { useClientResync } from '@/hooks/useClientResync';
 import { supabase } from '@/integrations/supabase/client';
 import { useState, useEffect } from 'react';
 import { User as SupabaseUser } from '@supabase/supabase-js';
@@ -46,11 +48,34 @@ const PatientDashboard = () => {
   const { drGreenClient, isEligible, isLoading: clientLoading, cart, cartTotal } = useShop();
   const { orders, isLoading: ordersLoading } = useOrderTracking();
   const { getClientDetails } = useDrGreenApi();
+  const { resyncClient, isResyncing } = useClientResync();
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const [profile, setProfile] = useState<{ full_name: string | null } | null>(null);
   const [shippingAddress, setShippingAddress] = useState<ShippingAddress | null>(null);
   const [isLoadingAddress, setIsLoadingAddress] = useState(true);
   const [isAddressDialogOpen, setIsAddressDialogOpen] = useState(false);
+  const [showResyncDialog, setShowResyncDialog] = useState(false);
+
+  // Handler for re-syncing client account
+  const handleResyncAccount = async () => {
+    if (!drGreenClient || !user) return;
+    
+    const result = await resyncClient({
+      id: drGreenClient.id || '',
+      email: drGreenClient.email || user.email || '',
+      fullName: drGreenClient.full_name || profile?.full_name || '',
+      countryCode: drGreenClient.country_code,
+      shippingAddress: typeof drGreenClient.shipping_address === 'object' && drGreenClient.shipping_address 
+        ? drGreenClient.shipping_address as Record<string, string>
+        : undefined,
+    });
+
+    if (result.success && result.kycLink) {
+      // Redirect to KYC link
+      window.open(result.kycLink, '_blank');
+    }
+    setShowResyncDialog(false);
+  };
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -350,6 +375,56 @@ const PatientDashboard = () => {
                       <FileText className="mr-2 h-4 w-4" />
                       Help & FAQ
                     </Button>
+                    
+                    {/* Re-Sync Account Button - for NFT-scoped credential issues */}
+                    {drGreenClient && isEligible && (
+                      <Dialog open={showResyncDialog} onOpenChange={setShowResyncDialog}>
+                        <DialogTrigger asChild>
+                          <Button 
+                            variant="ghost" 
+                            className="w-full justify-start text-muted-foreground hover:text-foreground"
+                          >
+                            <RefreshCw className="mr-2 h-4 w-4" />
+                            Re-Sync Account
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle className="flex items-center gap-2">
+                              <RefreshCw className="h-5 w-5" />
+                              Re-Sync Your Account
+                            </DialogTitle>
+                            <DialogDescription className="space-y-3 pt-2">
+                              <p>
+                                If you're experiencing issues placing orders (such as "Authorization failed" errors), 
+                                your account may need to be re-linked to our prescription system.
+                              </p>
+                              <p className="text-warning">
+                                <strong>Note:</strong> This will require you to complete KYC verification again.
+                              </p>
+                            </DialogDescription>
+                          </DialogHeader>
+                          <div className="flex gap-3 justify-end pt-4">
+                            <Button variant="outline" onClick={() => setShowResyncDialog(false)}>
+                              Cancel
+                            </Button>
+                            <Button 
+                              onClick={handleResyncAccount}
+                              disabled={isResyncing}
+                            >
+                              {isResyncing ? (
+                                <>
+                                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                                  Re-Syncing...
+                                </>
+                              ) : (
+                                'Re-Sync Now'
+                              )}
+                            </Button>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+                    )}
                   </CardContent>
                 </Card>
 

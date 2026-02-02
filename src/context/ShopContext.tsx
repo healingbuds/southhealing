@@ -20,6 +20,11 @@ interface DrGreenClient {
   is_kyc_verified: boolean;
   admin_approval: string;
   kyc_link: string | null;
+  // Additional fields from database
+  email?: string | null;
+  full_name?: string | null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  shipping_address?: any;
 }
 
 interface ExchangeRatesData {

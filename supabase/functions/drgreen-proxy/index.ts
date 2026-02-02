@@ -2478,6 +2478,38 @@ serve(async (req) => {
         logInfo(`[${requestId}] create-order: Starting order creation flow`);
         
         const orderData = body.data || {};
+        
+        // ========== MOCK MODE CHECK ==========
+        // When DRGREEN_MOCK_MODE is enabled, bypass the Dr. Green API entirely
+        // and return a simulated success response. This is useful for:
+        // 1. Testing the checkout flow without API dependencies
+        // 2. Development when credentials don't have order creation permission
+        // 3. Clients created under different NFT scopes (401 errors)
+        if (Deno.env.get('DRGREEN_MOCK_MODE') === 'true') {
+          logInfo(`[${requestId}] MOCK MODE: Simulating successful order creation`);
+          
+          const mockOrderId = `mock_${requestId}`;
+          const mockItems = orderData.items || [];
+          const mockTotal = mockItems.reduce((sum: number, item: { price?: number; quantity?: number }) => 
+            sum + ((item.price || 0) * (item.quantity || 1)), 0);
+          
+          return new Response(JSON.stringify({
+            success: true,
+            orderId: mockOrderId,
+            message: '[MOCK MODE] Order simulated successfully - no actual order was created in Dr. Green',
+            mockMode: true,
+            requestId,
+            items: mockItems,
+            totalAmount: mockTotal,
+            status: 'PENDING',
+            paymentStatus: 'PENDING',
+            createdAt: new Date().toISOString(),
+          }), { 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }, 
+            status: 200 
+          });
+        }
+        // ========== END MOCK MODE CHECK ==========
         if (!orderData.clientId) {
           logWarn(`[${requestId}] create-order: Missing clientId`);
           return new Response(JSON.stringify({
