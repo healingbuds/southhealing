@@ -317,7 +317,7 @@ const Auth = () => {
                       <DropdownMenuItem
                         onClick={() => {
                           setEmail("scott@healingbuds.global");
-                          setPassword("H34l1ng@buds2025!");
+                          setPassword("Password123!");
                         }}
                         className="cursor-pointer"
                       >
@@ -327,7 +327,7 @@ const Auth = () => {
                       <DropdownMenuItem
                         onClick={() => {
                           setEmail("kayliegh.sm@gmail.com");
-                          setPassword("TempPassword123!");
+                          setPassword("Password123!");
                         }}
                         className="cursor-pointer"
                       >
