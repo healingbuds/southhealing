@@ -324,6 +324,16 @@ const Auth = () => {
                         <Shield className="w-4 h-4 mr-2 text-primary" />
                         Admin
                       </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => {
+                          setEmail("kayliegh.sm@gmail.com");
+                          setPassword("TempPassword123!");
+                        }}
+                        className="cursor-pointer"
+                      >
+                        <UserIcon className="w-4 h-4 mr-2 text-green-600" />
+                        Kayliegh (Patient)
+                      </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
