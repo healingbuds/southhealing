@@ -10,13 +10,7 @@ import { z } from "zod";
 import Header from "@/layout/Header";
 import Footer from "@/components/Footer";
 import PageTransition from "@/components/PageTransition";
-import { Mail, Lock, User as UserIcon, ArrowRight, Loader2, Shield, ChevronDown } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { Mail, Lock, User as UserIcon, ArrowRight, Loader2 } from "lucide-react";
 import hbLogoWhite from "@/assets/hb-logo-white-new.png";
 import { useTranslation } from "react-i18next";
 import { useUserRole } from "@/hooks/useUserRole";
@@ -296,48 +290,6 @@ const Auth = () => {
                       : t('signupDescription')}
                 </p>
               </div>
-
-              {/* Quick Admin Login - Development Helper */}
-              {isLogin && !isForgotPassword && (
-                <div className="px-8 pt-4">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="w-full text-xs gap-2 border-dashed"
-                        type="button"
-                      >
-                        <Shield className="w-3 h-3" />
-                        Quick Login (Dev)
-                        <ChevronDown className="w-3 h-3 ml-auto" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="center" className="w-56">
-                      <DropdownMenuItem
-                        onClick={() => {
-                          setEmail("scott@healingbuds.global");
-                          setPassword("Password123!");
-                        }}
-                        className="cursor-pointer"
-                      >
-                        <Shield className="w-4 h-4 mr-2 text-primary" />
-                        Admin
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => {
-                          setEmail("kayliegh.sm@gmail.com");
-                          setPassword("Password123!");
-                        }}
-                        className="cursor-pointer"
-                      >
-                        <UserIcon className="w-4 h-4 mr-2 text-green-600" />
-                        Kayliegh (Patient)
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              )}
 
               {/* Forgot Password Form */}
               {isForgotPassword ? (

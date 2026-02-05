@@ -371,15 +371,26 @@ const Index = () => {
                     Check your eligibility for medical cannabis treatment today.
                   </p>
                   <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                    <Button 
-                      size="lg" 
-                      className="text-lg px-8 py-6"
-                      onClick={() => navigate('/eligibility')}
-                    >
-                      Start Medical Assessment
-                      <ArrowRight className="ml-2 w-5 h-5" />
-                    </Button>
-                    <Button 
+                    {isEligible ? (
+                      <Button 
+                        size="lg" 
+                        className="text-lg px-8 py-6"
+                        onClick={() => navigate('/shop')}
+                      >
+                        Browse Our Strains
+                        <ArrowRight className="ml-2 w-5 h-5" />
+                      </Button>
+                    ) : (
+                      <Button 
+                        size="lg" 
+                        className="text-lg px-8 py-6"
+                        onClick={() => navigate('/eligibility')}
+                      >
+                        Start Medical Assessment
+                        <ArrowRight className="ml-2 w-5 h-5" />
+                      </Button>
+                    )}
+                    <Button
                       size="lg" 
                       variant="outline"
                       className="text-lg px-8 py-6"

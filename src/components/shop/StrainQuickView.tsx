@@ -15,12 +15,12 @@ import { useToast } from '@/hooks/use-toast';
 import { formatPrice } from '@/lib/currency';
 import { PriceBreakdownTooltip } from './PriceBreakdownTooltip';
 
-interface CultivarQuickViewProps {
+interface StrainQuickViewProps {
   product: Product | null;
   onClose: () => void;
 }
 
-export function CultivarQuickView({ product, onClose }: CultivarQuickViewProps) {
+export function StrainQuickView({ product, onClose }: StrainQuickViewProps) {
   const [quantity, setQuantity] = useState(1);
   const { addToCart, isEligible, drGreenClient, countryCode, convertFromEUR } = useShop();
   const navigate = useNavigate();
@@ -64,7 +64,7 @@ export function CultivarQuickView({ product, onClose }: CultivarQuickViewProps) 
   const handleViewFullDetails = () => {
     if (!product) return;
     onClose();
-    navigate(`/shop/cultivar/${product.id}`);
+    navigate(`/shop/strain/${product.id}`);
   };
 
   const getCategoryStyles = (category: string) => {
@@ -170,7 +170,7 @@ export function CultivarQuickView({ product, onClose }: CultivarQuickViewProps) 
                     </h2>
                     <p className="text-muted-foreground text-sm flex items-center gap-2">
                       <Star className="h-4 w-4 text-amber-400 fill-amber-400" />
-                      Premium Medical Cultivar
+                      Premium Medical Strain
                     </p>
                   </div>
                   <Button
@@ -195,7 +195,7 @@ export function CultivarQuickView({ product, onClose }: CultivarQuickViewProps) 
 
                 {/* Description */}
                 <p className="text-muted-foreground leading-relaxed mb-6">
-                  {product.description || 'A premium medical cannabis cultivar carefully cultivated for therapeutic benefits.'}
+                  {product.description || 'A premium medical cannabis strain carefully cultivated for therapeutic benefits.'}
                 </p>
 
                 <Separator className="my-4 bg-white/10" />
